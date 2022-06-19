@@ -50,7 +50,10 @@ from os import environ, stat
 be_silent = False
 debug = False
 line_counter = 0
+exit_status = 0
+error_count = 0
 defines = {}
+file_aliases = {}
 extensions = []
 stamp = ''
 mstamp = ''
@@ -84,6 +87,20 @@ def Warn(message):
         Notice("    !!! Warning: lines {}: {}.".format(line_counter, message))
     else:
         Notice("    !!! Warning: {}.".format(message))
+
+def Error(message):
+    """
+    Notice a given error.
+    :param message:
+    :return:
+    """
+    if line_counter:
+        Notice("    *** Error: line {}: {}.".format(line_counter, message))
+    else:
+        Notice("    *** Error: {}}.".format(message))
+
+    exit_status |= 2
+    error_count += 1
 
 def SplitTime(time_stamp):
     """
@@ -312,6 +329,28 @@ def Define(key, value):
         value = "(((BLANK)))"
 
     defines[key] = value
+
+def DefineFilename(key, value):
+    """
+    Add a file alias in the hash table of filename aliases.
+    :param key:
+    :param value:
+    :return:
+    """
+    if value.startswith('/'):
+        Error("no absolute file references allowed: {}".format(value))
+        return
+
+    file_aliases[key] = value
+    Define(key, value)
+
+def GetValue(key):
+    """
+    Get the value of a specified macro.
+    :param key:
+    :return:
+    """
+    return defines[key]
 
 def show_version():
     """
