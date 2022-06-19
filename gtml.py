@@ -46,9 +46,40 @@ import argparse
 
 from os import environ
 
+be_silent = False
+debug = False
+line_counter = 0
 defines = {}
 extensions = []
 
+def Notice(message):
+    """
+    Print a given message, as is, on the standard output if allowed.
+    :param message:
+    :return:
+    """
+    if not be_silent:
+        print(message)
+
+def Debug(message):
+    """
+    Print a debug information.
+    :param message:
+    :return:
+    """
+    if debug:
+        print("########### {}".format(message))
+
+def Warn(message):
+    """
+    Notice a given warning.
+    :param message:
+    :return:
+    """
+    if line_counter:
+        Notice("    !!! Warning: lines {}: {}.".format(line_counter, message))
+    else:
+        Notice("    !!! Warning: {}.".format(message))
 
 def Define(key, value):
     """
@@ -62,7 +93,7 @@ def Define(key, value):
             key == "__SYSTEM__" or
             key == "__NEWLINE__" or
             key == "__TAB__"):
-        Warning("system macros unmodifiable `{}'".format(key))
+        Warn("system macros unmodifiable `{}'".format(key))
         return
 
     if key == 'INCLUDE_PATH':
