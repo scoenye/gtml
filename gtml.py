@@ -43,14 +43,18 @@
 #
 # ----------------------------------------------------------------------------
 import argparse
+import time
 
-from os import environ
+from os import environ, stat
 
 be_silent = False
 debug = False
 line_counter = 0
 defines = {}
 extensions = []
+stamp = ''
+mstamp = ''
+time_global = {}
 
 def Notice(message):
     """
@@ -80,6 +84,189 @@ def Warn(message):
         Notice("    !!! Warning: lines {}: {}.".format(line_counter, message))
     else:
         Notice("    !!! Warning: {}.".format(message))
+
+def SplitTime(time_stamp):
+    """
+    Split a given time into the following global printable values:
+
+      $sec        Seconds, 00 - 59
+      $min        Minutes, 00 - 59
+      $hour       Hours, 00 - 23
+      $wday       Day of the week, Sunday - Saturday
+      $shortwday  First three letters of month name, Sun - Sat
+      $mday       Day of the month, 1 - 31
+      $mdayth     Day of the month with particuliar extension, 1st - 31th
+      $mon        Month number, 1 - 12
+      $monthname  Full month name, January - December
+      $shortmon   First three letters of month name, Jan - Dec
+      $year       Full year (e.g. 1996)
+      $syear      Last two digits of year (e.g. 96)
+    :param time_stamp: 
+    :return: 
+    """
+    sec, min, hour, mday, mon, syear, wday, yday, isdst = time_stamp
+
+    # Month and Weekdays are defined differently in each language.
+    if GetValue("LANGUAGE") == "fr":
+        Month = ["Janvier", "F�vrier", "Mars",
+                 "Avril", "Mai", "Juin",
+                 "Juillet", "Ao�t", "Septembre",
+                 "Octobre", "Novembre", "D�cembre"]
+        WeekDay = ["Dimanche", "Lundi", "Mardi",
+                   "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+        if mday == 1:
+            mdayth = "1er"
+        else:
+            mdayth = mday
+
+    # "no" thanks to Helmers, Jens Bloch <Jens.Bloch.Helmers@dnv.com>
+    elif GetValue("LANGUAGE") == "no":
+        Month = ["januar", "februar", "mars",
+                 "april", "mai", "juni",
+                 "juli", "august", "september",
+                 "oktober", "november", "desember"]
+        WeekDay = ["S�ndag", "Mandag", "Tirsdag",
+                   "Onsdag", "Torsdag", "Fredag", "L�rdag"]
+        mdayth = mday + "."
+
+    # "se" thanks to magog, <magog@swipnet.se>
+    elif GetValue("LANGUAGE") == "se":
+        Month = ["januari", "februari", "mars",
+                 "april", "maj", "juni",
+                 "juli", "augusti", "september",
+                 "oktober", "november", "december"]
+        WeekDay = ["S�ndag", "M�ndag", "Tisdag", "Onsdag",
+                   "Torsdag", "Fredag", "L�rdag"]
+        mdayth = mday  # XXX: Not verified
+
+    # "it" thanks to Pioppo, <pioppo@4net.it>
+    elif GetValue("LANGUAGE") == "it":
+        Month = ["Gennaio", "Febbraio", "Marzo",
+                 "Aprile", "Maggio", "Giugno",
+                 "Luglio", "Agosto", "Settembre",
+                 "Ottobre", "Novembre", "Dicembre"]
+        WeekDay = ["Domenica", "Luned�", "Marted�", "Mercoled�",
+                   "Gioved�", "Venerd�", "Sabato"]
+        mdayth = mday
+
+    # "nl" thanks to Gert-Jan Brink <gertjan@code4u.com>
+    elif GetValue("LANGUAGE") == "nl":
+        Month = ["januari", "februari", "maart",
+                 "april", "mei", "juni",
+                 "juli", "augustus", "september",
+                 "oktober", "november", "december"]
+        WeekDay = ["zondag", "maandag", "dinsdag", "woensdag",
+                   "donderdag", "vrijdag", "zaterdag"]
+        mdayth = mday
+
+    # "de" thanks to Uwe Arzt <uwe.arzt@robots.de>
+    elif GetValue("LANGUAGE") == "de":
+        Month = ["Januar", "Februar", "M�rz",
+                 "April", "Mai", "Juni",
+                 "Juli", "August", "September",
+                 "Oktober", "November", "Dezember"]
+        WeekDay = ["Sonntag", "Montag", "Dienstag",
+                   "Mittwoch", "Donnerstag", "Freitag", "Samstag"]
+        mdayth = mday
+
+    # "ie" thanks to Ken Guest <kengu@credo.ie>
+    elif GetValue("LANGUAGE") == "ie":
+        Month = ["En�ir", "Feabhra", "M�rta",
+                 "Bealtaine", "Aibre�n", "Meitheamh",
+                 "L�il", "L�nasa", "M�an Fomhair",
+                 "Deireadh Fomhair", "Samhain", "M� na Nollaig"]
+        WeekDay = ["Domhnach", "Luan", "M�irt",
+                   "C�adaoin", "D�ardaoin", "Aoine", "Satharn"]
+        mdayth = mday + "."
+
+    # default is english.
+    else:
+        Month = ["January", "February", "March",
+                 "April", "May", "June",
+                 "July", "August", "September",
+                 "October", "November", "December"]
+        WeekDay = ["Sunday", "Monday", "Tuesday",
+                   "Wednesday", "Thursday", "Friday", "Saturday"]
+        mdayth = mday + "th"
+        # from <agre3@ironbark.bendigo.latrobe.edu.au>
+        if mday == 1 or mday == 21 or mday == 31:
+            mdayth = mday + "st"
+        if mday == 2 or mday == 22:
+            mdayth = mday + "nd"
+        if mday == 3 or mday == 23:
+            mdayth = mday + "rd"
+
+    time_global['sec']  = '{!02d}'.format(sec)
+    time_global['min']  = '{!02d}'.format(min)
+    time_global['hour'] = '{!02d}'.format(hour)
+
+    time_global['wday'] = WeekDay[wday]    # from <agre3@ironbark.bendigo.latrobe.edu.au>
+    time_global['shortwday'] = wday[:3]
+
+    time_global['monthname'] = Month[mon]
+    time_global['shortmon']  = time_global['monthname'][:3]
+
+    year = syear + 1900
+    time_global['year'] = year[:-2]
+    time_global['syear'] = syear
+    time_global['mday'] = mday
+    time_global['mdayth'] = mdayth
+    time_global['mon'] = mon + 1  # Because it starts from 0
+
+
+def FormatTimestamp(format_str):
+    """
+    Returns a printable time/date string based on a given format string.
+
+    The format string is passed in the variable $stamp, and the following
+    substitutions are made in it:
+
+      $ss         -> seconds
+      $mm         -> minutes
+      $hh         -> hour
+      $Ddd        -> Short weekday name (Sun - Sat)
+      $Day        -> full weekday name
+      $dd         -> day of the month
+      $ddth       -> day of the month with th extension
+      $MM         -> month number (1 - 12)
+      $Mmm        -> short month name (Jan - Dec)
+      $Month      -> full month name
+      $yyyy       -> full year (e.g. 1996)
+      $yy         -> short year (e.g. 96)
+
+    Make sure you call "SplitTime" first to initialise time global variables,
+    i.e time to format. 
+    :param format_str:
+    :return: 
+    """
+    format_str = format_str.replace('$ss', time_global['sec'])
+    format_str = format_str.replace('$mm', time_global['min'])
+    format_str = format_str.replace('$hh', time_global['hour'])
+    format_str = format_str.replace('$Ddd', time_global['shortwday'])
+    format_str = format_str.replace('$Day', time_global['wday'])
+    format_str = format_str.replace('$ddth', time_global['mdayth'])
+    format_str = format_str.replace('$dd', time_global['mday'])
+    format_str = format_str.replace('$MM', time_global['mon'])
+    format_str = format_str.replace('$Month', time_global['monthname'])
+    format_str = format_str.replace('$Mmm', time_global['shortmon'])
+    format_str = format_str.replace('$yyyy', time_global['year'])
+    format_str = format_str.replace('$yy', time_global['syear'])
+
+    return format_str
+
+def SetTimestamps(name=''):
+    """
+    Defines eventual timestamps macros.
+    :param name: file name
+    :return:
+    """
+    if stamp != "":
+        SplitTime(time.localtime())
+        Define("TIMESTAMP", FormatTimestamp(stamp))
+
+    if mstamp != "" and name != "":
+        SplitTime(time.localtime(stat(name).st_mtime))
+        Define("MTIMESTAMP", FormatTimestamp(mstamp))
 
 def Define(key, value):
     """
