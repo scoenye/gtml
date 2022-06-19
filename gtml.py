@@ -44,6 +44,56 @@
 # ----------------------------------------------------------------------------
 import argparse
 
+from os import environ
+
+defines = {}
+extensions = []
+
+
+def Define(key, value):
+    """
+    Add a macro in the definition list.
+    :param key:
+    :param value:
+    :return:
+    """
+    # Special macros.
+    if (key == "__PYTHON__" or
+            key == "__SYSTEM__" or
+            key == "__NEWLINE__" or
+            key == "__TAB__"):
+        Warning("system macros unmodifiable `{}'".format(key))
+        return
+
+    if key == 'INCLUDE_PATH':
+        includePath = value.split(':')
+
+    if key == 'OUTPUT_DIR':
+        outputDir = value
+
+    if key == 'OPEN_DELIMITER':
+        delim1 = value
+
+    if key == 'CLOSE_DELIMITER':
+        delim2 = value
+
+    if key == 'ARGUMENT_SEPARATOR':
+        argsep = value
+
+    if key == 'EXTENSION':
+        ext_target = value
+        extensions.append(value)
+
+    if key == 'DEBUG':
+        debug = True
+
+    if key == 'LANGUAGE':
+        SetTimestamps()
+
+    if value == '':
+        value = "(((BLANK)))"
+
+    defines[key] = value
 
 def show_version():
     """
@@ -107,3 +157,6 @@ NOTES:
     if args.version:
         show_version()
         exit(0)
+
+    for env_key in environ:
+        Define(env_key, environ[env_key])
