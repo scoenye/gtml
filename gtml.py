@@ -57,6 +57,7 @@ line_counter = 0
 exit_status = 0
 error_count = 0
 defines = {}
+characters = {}
 file_aliases = {}
 extensions = []
 stamp = ''
@@ -368,6 +369,15 @@ def GetValue(key):
     :return:
     """
     return defines[key]
+
+def Undefine(key):
+    """
+    Remove a specified macro from the list of macros.
+    :param key:
+    :return:
+    """
+    del defines[key]
+    del characters[key]
 
 def ChangeExtension(file_name):
     """
