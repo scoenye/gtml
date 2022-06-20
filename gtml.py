@@ -43,9 +43,13 @@
 #
 # ----------------------------------------------------------------------------
 import argparse
+import re
 import time
 
 from os import environ, stat
+
+ext_source  = [".gtm", ".gtml"]
+ext_target  = ".html"
 
 be_silent = False
 debug = False
@@ -230,7 +234,6 @@ def SplitTime(time_stamp):
     time_global['mdayth'] = mdayth
     time_global['mon'] = mon + 1  # Because it starts from 0
 
-
 def FormatTimestamp(format_str):
     """
     Returns a printable time/date string based on a given format string.
@@ -344,6 +347,20 @@ def DefineFilename(key, value):
     file_aliases[key] = value
     Define(key, value)
 
+def SetFileReferences():
+    """
+    Define the value of each filename aliases as macros.
+    :return:
+    """
+    for alias in file_aliases:
+        if GetValue("ROOT_PATH") == "(((BLANK)))":
+            value = file_aliases[alias]
+        else:
+            value = GetValue("ROOT_PATH") + file_aliases[alias]
+
+        value = ChangeExtension(value)
+        Define(alias, value)
+
 def GetValue(key):
     """
     Get the value of a specified macro.
@@ -351,6 +368,29 @@ def GetValue(key):
     :return:
     """
     return defines[key]
+
+def ChangeExtension(file_name):
+    """
+    Return the given source filename with extension changed according to
+    ext_tartget
+    :param file_name:
+    :return:
+    """
+    for extension in ext_source:
+        # Match can occur anywhere in the string, but it is
+        # only erased when at the end of the file name??
+        # Also: ext_source elements already have a period?
+        if re.search(r'\.{}'.format(extension), file_name):
+            file_name = re.sub(r'\.{}$'.format(extension), '', file_name)
+
+        # And now we're looking to substitute the extension at
+        # the end, but we just erased the lower case variant?
+        # => change to .html, but only if the original was upper case?
+        if re.search(r'{}$'.format(extension), file_name,
+                     flags=re.IGNORECASE):
+            file_name = re.sub(r'{}$'.format(extensions), ext_target, file_name)
+
+    return file_name
 
 def show_version():
     """
