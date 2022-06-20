@@ -51,6 +51,8 @@ from os import environ, stat
 ext_source  = [".gtm", ".gtml"]
 ext_target  = ".html"
 
+argsep = ','
+
 be_silent = False
 debug = False
 line_counter = 0
@@ -401,6 +403,48 @@ def ChangeExtension(file_name):
             file_name = re.sub(r'{}$'.format(extensions), ext_target, file_name)
 
     return file_name
+
+def Markup(statement, value):
+    """
+    Mark up a given definition in order to outline argument of a definition.
+    :param statement:
+    :param value:
+    :return:
+    """
+    match = re.search(r'(.+)\((.+)\)', statement)     # statement(arg_list)
+
+    if match:
+        # Tag has parens: MACRO(x,y) ....x....y....
+        statement = match.group(1)   # key is now just the command.
+        arguments = match.group(2)   # the argument list that was part of key
+        arg_list = arguments.split(argsep)
+
+        start = 0   # Default next marker if the key is not yet defined.
+
+        # Verify if key is not yet defined, if yes find last argument.
+        old_value = GetValue(statement)
+
+        if old_value != '':
+            # Find rightmost occurrence of (((MARKERz)))
+            last_arg = old_value[old_value.rfind("(((MARKER"):]
+
+            level = re.match(r'\(\(\(MARKER([0-9])+\)\)\).*$', last_arg)
+            if level:
+                start = level.group(1) + 1          # Incoming argument will be old + 1
+
+        # Markup argument
+        for index, argument in enumerate(arg_list): # Go over all the statement's arguments
+            pos = value.find(argument)      # Is the argument also in the value supplied to the function?
+            length = len(argument)          # Can happen if ,, was in the statement arguments, but...
+
+            # ... non-0 length requirement means ,, breaks the loop
+            while pos >= 0 and length > 0:  # sensible argument, also present in the value parameter
+                j = index + start           # New marker counter - does not change in this loop
+                value[pos: pos+length] = "(((MARKER{})))".format(j) # Replace the argument value with the marker
+                pos = value.find(argument)  # Replace remaining occurrences of the argument
+                length = len(argument)      # with the same marker
+
+    return statement, value
 
 def show_version():
     """
