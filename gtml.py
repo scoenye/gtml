@@ -44,6 +44,7 @@
 # ----------------------------------------------------------------------------
 import argparse
 import re
+import subprocess
 import time
 
 from os import environ, stat
@@ -51,10 +52,13 @@ from os import environ, stat
 ext_source  = [".gtm", ".gtml"]
 ext_target  = ".html"
 
+delim1 = '<<'
+delim2 = '>>'
 argsep = ','
 
 be_silent = False
 debug = False
+entities = True     # Convert HTML entities or not?
 line_counter = 0
 exit_status = 0
 error_count = 0
@@ -445,6 +449,91 @@ def Markup(statement, value):
                 length = len(argument)      # with the same marker
 
     return statement, value
+
+def Substitute(line):
+    """
+    Substitute all macros in a line read from the source file.
+    :param line:
+    :return: the line with all macros substituted
+    """
+    # HTML entities may be converted.
+    if entities:
+        # The default case: substitute '<', '&', and '>'.
+        line = line.replace('&', '&amp;')
+        line = line.replace('<', '&lt;')
+        line = line.replace('>', '&gt;')
+
+    # User-defined characters to be converted.
+    for user_char in characters:
+        line.replace(user_char, characters[user_char])
+
+    # Macros have to be replaced by their values.
+    # __NEWLINE__ and __TAB__ are substitute after all others.
+    special = delim1 + '__NEWLINE__' + delim2
+    line.replace(special, '__NEWLINE__')
+
+    special = delim1 + '__TAB__'  + delim2
+    line.replace(special, '__TAB__')
+
+    l1 = len(delim1)
+    l2 = len(delim2)
+
+    more = True
+
+    while more:
+        p2 = line.find(delim2)              # Leftmost occurrence of >>, -1 if not found
+        p1 = line.rfind(delim1, 0, p2)      # Locate the matching <<, before the >> found above.
+
+        if p2 >= l1:                        # p2 == l1 for <<>>
+            key = line[p1+l1, p2-p1-l2]
+
+            if re.search(r'^[^ \t]+[ \t]*\(.*\)$', key):
+                # Tag contains a keyword and arguments.
+                key, argument = key.split('(', maxsplit=1)
+                argument = re.sub(r'\)$', '', argument)
+                args_list = SplitArgs(argument)
+
+            if key == "__PYTHON__":
+                value = eval(args_list[0])
+            elif key == "__SYSTEM__":
+                value = subprocess.check_output(args_list[0])
+            else:
+                value = defines[key]
+
+                for i in range(len(args_list)):
+                    # Argument substitution.
+                    marker = '(((MARKER{})))'.format(i)
+                    marker_location = value.find(marker)
+                    while marker_location != -1:
+                        # Substitution template contains a replacement marker.
+                        length = len(marker)
+                        value[marker_location:marker_location+length] = args_list[i]
+                        marker_location = value.find(marker)
+
+            # Make some verifications.
+            if value == '' and not (key == "__PYTHON__" or key == "__SYSTEM__"):
+                Warn("undefined name `{}'".format(key))
+
+            match = re.search(r'\(\(\(MARKER([0-9])+\)\)\)', value)
+            if match:
+                Error("missing argument {}".format(match.group(1)))
+
+            # Straightforward substitution.
+            if value == '(((BLANK)))':
+                value = ''
+
+            line[p1, p2-p1+l2] = value
+        else:
+            # FIXME: something is missing here, but this is from the Perl version
+            if value == '(((BLANK)))':
+                value = ''
+
+            more = False
+
+    line.replace('__NEWLINE__', '\n')
+    line.replace('__TAB__', '\t')
+
+    return line
 
 def show_version():
     """
