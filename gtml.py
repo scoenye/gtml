@@ -535,6 +535,40 @@ def Substitute(line):
 
     return line
 
+def SplitArgs(arg_string):
+    """
+    # Split a string containing arguments into an array of argument and returns
+    # this array. Take care of quoted arguments, in order to allow the use of
+    # argument separator in argument.
+    :param arg_string:
+    :return:
+    """
+    temp = arg_string.split(argsep)
+
+    while len(temp) > 0:
+        arg = temp.pop(0)
+
+        if arg.startswith('"'):
+            # Start of "quoted arg" detected, look for end, and add argument.
+            # The argument may have been split if it had embedded separators.
+            # This puts Humpty Dumpty back together again
+            while not re.match(r'(^"[^"]*")', arg):
+                arg += argsep + temp.pop(0)
+
+            arg = arg.strip('"')
+            args.append(arg)
+        elif arg.startswith("'"):
+            # Start of 'quoted arg' detected, look for end, and add argument.
+            while not re.match(r"(^'[^']*')",arg):
+                arg += argsep + temp.pop(0)
+
+            arg = arg.strip("'", arg)
+            args.append(arg)
+        else:
+            args.append(arg)
+
+    return args
+
 def show_version():
     """
     Display the program's current version
