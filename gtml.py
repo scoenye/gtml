@@ -50,6 +50,7 @@ import time
 from os import environ, stat
 
 ext_source  = [".gtm", ".gtml"]
+ext_project = [".gtp"]
 ext_target  = ".html"
 
 delim1 = '<<'
@@ -385,29 +386,6 @@ def Undefine(key):
     del defines[key]
     del characters[key]
 
-def ChangeExtension(file_name):
-    """
-    Return the given source filename with extension changed according to
-    ext_tartget
-    :param file_name:
-    :return:
-    """
-    for extension in ext_source:
-        # Match can occur anywhere in the string, but it is
-        # only erased when at the end of the file name??
-        # Also: ext_source elements already have a period?
-        if re.search(r'\.{}'.format(extension), file_name):
-            file_name = re.sub(r'\.{}$'.format(extension), '', file_name)
-
-        # And now we're looking to substitute the extension at
-        # the end, but we just erased the lower case variant?
-        # => change to .html, but only if the original was upper case?
-        if re.search(r'{}$'.format(extension), file_name,
-                     flags=re.IGNORECASE):
-            file_name = re.sub(r'{}$'.format(extensions), ext_target, file_name)
-
-    return file_name
-
 def Markup(statement, value):
     """
     Mark up a given definition in order to outline argument of a definition.
@@ -568,6 +546,102 @@ def SplitArgs(arg_string):
             args.append(arg)
 
     return args
+
+def isProjectFile(file_name):
+    """
+    Return True if given filename may be a project file, False otherwise.
+    :param file_name:
+    :return:
+    """
+    for ext in ext_project:
+        if file_name.endswith(ext):
+            return True
+
+    return False
+
+def isSourceFile(file_name):
+    """
+    Return True if given filename may be a source file, False otherwise.
+    :param file_name:
+    :return:
+    """
+    for ext in ext_source:
+        if file_name.endswith(ext):
+            return True
+
+    return False
+
+def ChangeExtension(file_name):
+    """
+    Return the given source filename with extension changed according to
+    ext_tartget
+    :param file_name:
+    :return:
+    """
+    for extension in ext_source:
+        # Match can occur anywhere in the string, but it is
+        # only erased when at the end of the file name??
+        # Also: ext_source elements already have a period?
+        if re.search(r'\.{}'.format(extension), file_name):
+            file_name = re.sub(r'\.{}$'.format(extension), '', file_name)
+
+        # And now we're looking to substitute the extension at
+        # the end, but we just erased the lower case variant?
+        # => change to .html, but only if the original was upper case?
+        if re.search(r'{}$'.format(extension), file_name,
+                     flags=re.IGNORECASE):
+            file_name = re.sub(r'{}$'.format(extensions), ext_target, file_name)
+
+    return file_name
+
+def GetPathname(name):
+    """
+    Get the pathname of a given file. Always ends with a `/' if non-null.
+    :param name:
+    :return:
+    """
+
+    name = name.replace('\\', '/')
+    last_slash = name.rfind('/')
+
+    if last_slash != -1:
+        name = name[:last_slash+1]
+    else:
+        name = ''
+
+    return name
+
+def GetOutputBasename(name):
+    """
+    Get the basename of a given output file.
+    :param name:
+    :return:
+    """
+    name = name.replace('\\', '/')
+    last_slash = name.rfind('/')
+
+    base_name = name[:last_slash+1]
+    base_name = re.sub(r'{}$'.format(ext_target), '', base_name)
+
+    return base_name
+
+def GetPathToRoot(name):
+    """
+    Get the path to the root directory of the project from a given a file name.
+    Always end with a `/' if non-null.
+    :param name:
+    :return:
+    """
+    basename = name.replace('\\', '/')     # "\" -> "/"
+    last_slash = basename.rfind('/')
+
+    if last_slash != -1:
+        basename = basename[:last_slash+1]
+
+    path_to_root = re.sub(r'{}'.format(basename), '', name)
+    path_to_root = re.sub(r'[^/\.]+/', '../', path_to_root)
+
+    return path_to_root
 
 def show_version():
     """
