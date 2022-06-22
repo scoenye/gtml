@@ -58,6 +58,8 @@ delim1 = '<<'
 delim2 = '>>'
 argsep = ','
 
+include_path = []
+
 be_silent = False
 debug = False
 entities = True     # Convert HTML entities or not?
@@ -304,6 +306,8 @@ def Define(key, value):
     :param value:
     :return:
     """
+    global include_path
+
     # Special macros.
     if (key == "__PYTHON__" or
             key == "__SYSTEM__" or
@@ -313,7 +317,7 @@ def Define(key, value):
         return
 
     if key == 'INCLUDE_PATH':
-        includePath = value.split(':')
+        include_path = value.split(':')
 
     if key == 'OUTPUT_DIR':
         outputDir = value
@@ -669,6 +673,37 @@ def GetPathToRoot(name):
     path_to_root = re.sub(r'[^/\.]+/', '../', path_to_root)
 
     return path_to_root
+
+def ResolveIncludeFile(name):
+    """
+    Returns the complete name of a file which may be stored anywhere in the
+    include path.
+    :param name:
+    :return:
+    """
+    path = GetValue("PATHNAME") + name
+    path = path.replace('//', '/')
+
+    if GetValue("PATHNAME") == "(((BLANK)))":
+        path = name
+
+    # Perl test uses -r: True if file readable by effective uid/gid.
+    # os.access uses the real uid/gid. Impact TBD.
+    if os.path.isfile(path) and os.access(path, os.R_OK):
+        return path
+    elif os.path.isfile(name) and os.access(name, os.R_OK):
+        return name
+
+    for directory in include_path:
+        expanded_path = Substitute(directory)
+        expanded_path = expanded_path + '/' + name
+        expanded_path = expanded_path.replace('//', '')
+
+        if os.path.isfile(expanded_path) and os.access(expanded_path, os.R_OK):
+            return expanded_path
+
+    Error("no include file '{}' in `{}'".format(name, GetValue("INCLUDE_PATH")))
+    return ''
 
 def show_version():
     """
