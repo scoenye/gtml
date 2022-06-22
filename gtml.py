@@ -59,6 +59,7 @@ delim2 = '>>'
 argsep = ','
 
 include_path = []
+output_dir = ''
 
 be_silent = False
 debug = False
@@ -109,6 +110,8 @@ def Error(message):
     :param message:
     :return:
     """
+    global exit_status, error_count
+
     if line_counter:
         Notice("    *** Error: line {}: {}.".format(line_counter, message))
     else:
@@ -306,7 +309,7 @@ def Define(key, value):
     :param value:
     :return:
     """
-    global include_path
+    global include_path, output_dir, delim1, delim2, argsep, ext_target, debug
 
     # Special macros.
     if (key == "__PYTHON__" or
@@ -320,7 +323,7 @@ def Define(key, value):
         include_path = value.split(':')
 
     if key == 'OUTPUT_DIR':
-        outputDir = value
+        output_dir = value
 
     if key == 'OPEN_DELIMITER':
         delim1 = value
