@@ -43,11 +43,12 @@
 #
 # ----------------------------------------------------------------------------
 import argparse
+import os
 import re
 import subprocess
 import time
 
-from os import environ, stat
+from os import environ
 
 ext_source  = [".gtm", ".gtml"]
 ext_project = [".gtp"]
@@ -293,7 +294,7 @@ def SetTimestamps(name=''):
         Define("TIMESTAMP", FormatTimestamp(stamp))
 
     if mstamp != "" and name != "":
-        SplitTime(time.localtime(stat(name).st_mtime))
+        SplitTime(time.localtime(os.stat(name).st_mtime))
         Define("MTIMESTAMP", FormatTimestamp(mstamp))
 
 def Define(key, value):
@@ -624,6 +625,32 @@ def GetOutputBasename(name):
     base_name = re.sub(r'{}$'.format(ext_target), '', base_name)
 
     return base_name
+
+def AllSourceFiles():
+    """
+    Returns a list of all source files under the `.' directory.
+    :return:
+    """
+    files = []
+    dirs = ['.']
+
+    dir_name = dirs.pop()      # Start off with the current directory
+
+    while dir_name:
+        for entry in os.listdir(dir_name):
+            if dir_name == '.':
+                dir_name = ''
+            else:
+                dir_name += '/'
+
+            if isSourceFile(entry):
+                files.append('{}{}'.format(dir_name, entry))
+            elif os.path.isdir('{}{}'.format(dir_name, entry)):
+                dirs.append('{}{}'.format(dir_name, entry))
+
+            dir_name = dirs.pop()
+
+    return files
 
 def GetPathToRoot(name):
     """
