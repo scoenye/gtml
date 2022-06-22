@@ -70,10 +70,18 @@ error_count = 0
 defines = {}
 characters = {}
 file_aliases = {}
+dependencies = {}
 extensions = []
 stamp = ''
 mstamp = ''
 time_global = {}
+
+# page level globals
+pfile = []
+plevel= []
+ptitle = []
+file_to_process = []
+
 
 def Notice(message):
     """
@@ -673,7 +681,7 @@ def GetPathToRoot(name):
         basename = basename[:last_slash+1]
 
     path_to_root = re.sub(r'{}'.format(basename), '', name)
-    path_to_root = re.sub(r'[^/\.]+/', '../', path_to_root)
+    path_to_root = re.sub(r'[^/.]+/', '../', path_to_root)
 
     return path_to_root
 
@@ -707,6 +715,280 @@ def ResolveIncludeFile(name):
 
     Error("no include file '{}' in `{}'".format(name, GetValue("INCLUDE_PATH")))
     return ''
+
+# ----------------------------------------------------------------------------
+# Read a source line into a given file. Source lines may be written on
+# multiple lines via `\' character at the end.
+
+def ReadLine(file):
+    """
+    Read a source line into a given file. Source lines may be written on
+    multiple lines via `\' character at the end.
+    :param file:
+    :return:
+    """
+    # Read a line from input file.
+    line = file.readline()
+
+    while line.endswith('\\\n'):
+        # We are on multilines, so remove last `\' and '\n'.
+        line = line[:-2]
+
+        # Read a new line from input file.
+        line += file.readline()
+
+    yield line
+
+def ProcessProjectFile(name, process):
+    """
+    What to do with a given project file. If second argument is False then source
+    files will not be processed (i.e. means the routine is called for an
+    included project file).
+    :param name:
+    :param process:
+    :return:
+    """
+    global stamp, mstamp, dependencies
+
+    hierarchy_read = False
+
+    suppress = [False]
+    was_true = [False]
+    was_else = [False]
+    current = 0
+    if_level = 0
+
+    if process:
+        Notice("=== Project file $name ===")
+    else:
+        Notice("--- Included project file $name ---")
+
+    STREAM = open(name, 'r')
+
+    for line in ReadLine(STREAM):
+        # Skip blank and comment lines.
+        if line.startswith('//'):
+            continue
+
+        if line.isspace():  # Works properly with the \n terminator
+            continue
+
+        line = line[:-1]    # Drop the \n
+
+        # Next process if(def)/elsif/else/endif to decide if we want to
+        # suppress any lines.
+        if line.startswith('if') or line.startswith('elsif'):
+
+            if line.startswith('if'):
+                if_level += 1
+                wasIf = True
+            else:
+                line = line[3:]
+                wasIf = False
+
+            line = Substitute(line)
+
+            if line.startswith('ifdef') or line.startswith('ifndef'):
+                dummy, var = line.split(maxsplit=1)
+                match = GetValue(var) != ''
+                if line.startswith('ifndef'):
+                    match = not match
+            else:
+                condl, var, comp, value = line.split(maxsplit=3)
+
+                if comp == "==":
+                    match = var == value
+                elif comp == "!=":
+                    match = var != value
+                else:
+                    Error("unknown comparator `$comp'".format(comp))
+                    match = False
+
+            if wasIf:
+                suppress.append(not match)
+                was_true.append(match)
+                was_else.append(False)
+
+                if not suppress[current]:
+                    current = if_level
+            else:
+                if if_level == 0:
+                    Error("els{} with no preceding if".format(condl))
+                elif was_true[if_level]:
+                    suppress[if_level] = True
+                else:
+                    suppress[if_level] = not match
+                    was_true[if_level] = match
+
+            continue
+        elif line.startswith('else'):
+            if if_level == 0:
+                Error("else with no preceding if")
+            elif was_else[if_level]:
+                Error("multiple 'else's")
+            else:
+                suppress[if_level] = was_true[if_level]
+                was_else[if_level] = True
+
+            continue
+
+        elif line.startswith('endif'):
+            if if_level == 0:
+                Error("unmatched endif")
+            else:
+                suppress.pop()
+                was_true.pop()
+                was_else.pop()
+
+                if current == if_level:
+                    current -= 1
+
+                if_level -= 1
+
+            continue
+
+        # Skip lines if current ignoring state says so.
+        if suppress[current]:
+            continue
+
+        # Characters translation can be defined here.
+        if re.match(r'definechar[ \t]', line):
+            dummy, key, value = line.split(maxsplit=2)
+            characters[key] = value
+        # Macros can be defined here.
+        elif re.match(r'define[ \t]', line):
+            dummy, key, value = line.split(maxsplit=2)
+            match = re.search(r'(.+)\((.+)\)', key)
+            if match:
+                Undefine(match.group(1))
+
+            key, value = Markup(key, value)
+            Define(key, value)
+        elif re.match(r'newdefine[ \t]', line):
+            dummy, key, value = line.split(maxsplit=2)
+            if GetValue(key) != '':
+                continue
+
+            key, value = Markup(key, value)
+            Define(key, value)
+        elif line.startswith('define!'):
+            line = Substitute(line)
+            dummy, key, value = line.split(maxsplit=2)
+
+            match = re.search(r'(.+)\((.+)\)', key)
+            if match:
+                Undefine(match.group(1))
+
+            key, value = Markup(key, value)
+            Define(key, value)
+        elif line.startswith('newdefine!'):
+            line = Substitute(line)
+            dummy, key, value = line.split(maxsplit=2)
+
+            if GetValue(key) != '':
+                continue
+
+            key, value = Markup(key, value)
+            Define(key, value)
+        elif line.startswith('define+'):
+            dummy, key, value = line.split(maxsplit=2)
+            key, value = Markup(key, value)
+            Define(key, GetValue(key) + value)
+        elif re.match(r'undef[ \t]', line):
+            dummy, key = line.split(maxsplit=1)
+            Undefine(key)
+
+        # Saving bandwidth file compression eliminates anything not necessary
+        # for correct display of content on the client browser.
+        elif line.startswith('compress'):
+            dummy, switch = line.split(maxsplit=1)
+
+            if switch.upper() == 'ON':
+                compression = True
+            elif switch.upper() == 'OFF':
+                compression = False
+            else:
+                Error("expecting compress as `ON' or `OFF'")
+
+        # Timestamp format can be defined here.
+        elif re.match(r'timestamp[ \t]', line):
+            dummy, stamp = line.split(maxsplit=1)
+        elif re.match(r'mtimestamp[ \t]', line):
+            dummy, mstamp = line.split(maxsplit=1)
+
+        # Filenames aliases can be defined here.
+        elif re.match(r'filename[ \t]', line):
+            line = Substitute(line)
+            dummy, key, value = line.split(maxsplit=2)
+            DefineFilename(key, value)
+
+        # Included files.
+        elif re.match(r'include[ \t]', line):
+
+            line = Substitute(line)
+            result = re.search(r'^include[ \t]*"(.*)".*$', line)
+            file = result.group(1)
+            file = ResolveIncludeFile(file)
+            dependencies[name] += '{} '.format(file)
+            ProcessProjectFile(file, 0)
+
+        # They can ask for all source files here.
+        elif line.startswith('allsource'):
+            for file in AllSourceFiles():
+                ProcessSourceFile(file, name)
+
+        # They can ask for hierarchy files process.
+        elif line.startswith('hierarchy'):
+            for ii in range(len(pfile)):
+                SetLinks()
+                ProcessSourceFile(pfile[ii], name, " ({})".format(plevel[ii]))
+
+            hierarchy_read = True
+
+        # Everything else must be a source file name.
+        else:
+            line = Substitute(line)
+            file, level, title = line.split(maxsplit=2)
+
+            if file in file_aliases:
+                file = file_aliases[file]
+
+            if file.startswith('/'):
+                Error("no absolute file references allowed: {}".format(file))
+                continue
+
+            if isSourceFile(file):
+                if level == '':
+                    ProcessSourceFile(file, name)
+                else:
+                    lkey = "__TOC_{}__".format(level)
+                    if not lkey in defines:
+                        Define(lkey, "<ul>(((MARKER0)))</ul>")
+
+                    lkey = "__TOC_{}_ITEM__".format(level)
+                    if not lkey in defines:
+                        Define(lkey, '<li><a href="(((MARKER0)))">(((MARKER1)))</a>')
+
+                    pfile.append(file)
+                    plevel.append(level)
+                    ptitle.append(title)
+            else:
+                Warn("Skipping `$_' (unknown file type)")
+
+    # Process files with links to others.
+    if not hierarchy_read:
+        for ii in range(len(pfile)):
+            SetLinks()
+            ProcessSourceFile(pfile[ii], name, ' {}'.format(plevel[ii]))
+
+    # Clean up a bit.
+    if process:
+        del file_to_process
+        del pfile
+        del plevel
+        del ptitle
+
+    STREAM.close()
 
 def show_version():
     """
