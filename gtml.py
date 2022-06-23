@@ -1059,6 +1059,62 @@ def SetLinks(page_index):
         Undefine("LINK_NEXT")
         Undefine("TITLE_NEXT")
 
+def GenSiteMap():
+    """
+    Generate a complete SiteMap using predefined macros __TOC_x__, and
+    __TOC_x_ITEM__. Almost all ideas and code comes from <Uwe.Arzt@t-mobil.de>,
+    and <marquet@lifl.fr>.
+    :return:
+    """
+
+    level_old = 0
+    map_entry = ""
+
+    for xx in range(len(pfile)):
+        f = pfile[xx]
+        f = ChangeExtension(f)
+
+        if level_old < plevel[xx]:
+            map_entry += (" " * ((plevel[xx] - 1) * 2)) \
+                         + delim1 \
+                         + "__TOC_{}__('".format(plevel[xx]) \
+                         + delim1 \
+                         + "__NEWLINE__{}".format(delim2)
+
+            map_entry += (" " * ((plevel[xx] - 1) * 2 + 2)) \
+                         + delim1 \
+                         + "__TOC_" + plevel[xx] \
+                         + "_ITEM__('" + f \
+                         + "'" + argsep \
+                         + "'" + ptitle[xx] + "')" \
+                         + delim2 + delim1 \
+                         + "__NEWLINE__" + delim2
+
+        if level_old == plevel[xx]:
+            map_entry += (" " * ((plevel[xx] - 1) * 2 + 2)) \
+                         + delim1 + "__TOC_" + plevel[xx] \
+                         + "_ITEM__('" + f + "'" + argsep + "'" + ptitle[xx] + "')" \
+                         + delim2 + delim1 + "__NEWLINE__" + delim2
+
+        if level_old > plevel[xx]:
+            map_entry += (" " * (plevel[xx] * 2)) \
+                         + "')" + delim2 + delim1 + "__NEWLINE__" + delim2
+
+            map_entry += (" " * ((plevel[xx] - 1) * 2 + 2)) \
+                         + delim1 + "__TOC_" + plevel[xx] \
+                         + "_ITEM__('" + f + "'" + argsep + "'" + ptitle[xx] + "')" \
+                         + delim2 + delim1 + "__NEWLINE__" + delim2 \
+
+        level_old = plevel[xx]
+
+    for xx in range(level_old, 0, -1):
+        map_entry += (" " * ((plevel[xx] - 2) * 2)) \
+                     + "\')" + delim2 + delim1 + "__NEWLINE__" + delim2
+
+    map_entry = Substitute(map_entry)
+
+    return map_entry
+
 def show_version():
     """
     Display the program's current version
