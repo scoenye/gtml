@@ -1215,6 +1215,39 @@ def ProcessSourceFile(name, parent, level):
     defines = save_defines
     characters = save_characters
 
+def CompressLines(lines):
+    """
+    Compresses all lines, removing all thing not necessary for a browser.
+    :param lines:
+    :return:
+    """
+    line = ' '.join(lines)
+
+    # Translate tabs and linefeed into spaces.
+    tab_map = str.maketrans('\t\n', '  ')
+    line.translate(tab_map)
+
+    # Discard all comments.
+    del1 = '<!--'
+    len1 = len(del1)
+    del2 = '-->'
+    len2 = len(del2)
+
+    while True:
+        p1 = line.find(del1)    # locate <!--
+        p2 = line.find(del2)    # locate (following) -->
+
+        if 0 <= p1 < p2 and p2 >= 0:
+            line = line[:p1] + line[p2+len2:]  # Remove the entire comment
+        else:
+            break
+
+    # Squeeze all multiple spaces. Terminate the compressed sequence by \n
+    line = re.sub(r'\s+', ' ', line)
+    if line.endswith(' '):
+        line = line[:-1]
+
+    return line + '\n'
 
 def show_version():
     """
