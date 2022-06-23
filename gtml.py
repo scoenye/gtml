@@ -941,7 +941,7 @@ def ProcessProjectFile(name, process):
         # They can ask for hierarchy files process.
         elif line.startswith('hierarchy'):
             for ii in range(len(pfile)):
-                SetLinks()
+                SetLinks(ii)
                 ProcessSourceFile(pfile[ii], name, " ({})".format(plevel[ii]))
 
             hierarchy_read = True
@@ -979,7 +979,7 @@ def ProcessProjectFile(name, process):
     # Process files with links to others.
     if not hierarchy_read:
         for ii in range(len(pfile)):
-            SetLinks()
+            SetLinks(ii)
             ProcessSourceFile(pfile[ii], name, ' {}'.format(plevel[ii]))
 
     # Clean up a bit.
@@ -990,6 +990,74 @@ def ProcessProjectFile(name, process):
         del ptitle
 
     STREAM.close()
+
+def SetLinks(page_index):
+    """
+    Add macros used for link to other pages for files with links to others.
+    :param page_index: index of page to link
+    :return:
+    """
+    # Be sure that there is nothing defined to start
+    Undefine("TITLE_CURRENT")
+    Undefine("TITLE_UP")
+    Undefine("TITLE_NEXT")
+    Undefine("TITLE_PREV")
+    Undefine("LINK_UP")
+    Undefine("LINK_NEXT")
+    Undefine("LINK_PREV")
+
+    # All links are relative to the root directory.
+    pathToRoot = GetPathToRoot(pfile[page_index])
+
+    Define("TITLE_CURRENT", ptitle[page_index])
+
+    # Go up one level.
+    up_file = ''
+
+    i = page_index - 1
+
+    while i >= 0 and plevel[i] >= plevel[page_index]:
+        i -= 1
+
+    if i >= 0 and plevel[i] < plevel[page_index]:
+        if pfile[i].startswith('/'):
+            Define("LINK_UP", ChangeExtension(pfile[i]))
+        else:
+            Define("LINK_UP", ChangeExtension("{}{}".format(pathToRoot, pfile[i])))
+
+        Define("TITLE_UP", ptitle[i])
+        up_file = pfile[i]
+    else:
+        Undefine("LINK_UP")
+        Undefine("TITLE_UP")
+
+    # Previous document.
+    i = page_index - 1
+
+    if i >= 0 and pfile[i] and pfile[i] != up_file:
+        if pfile[i].startswith('/'):
+            Define("LINK_PREV", ChangeExtension(pfile[i]))
+        else:
+            Define("LINK_PREV", ChangeExtension("{}{}".format(pathToRoot, pfile[i])))
+
+        Define("TITLE_PREV", ptitle[i])
+    else:
+        Undefine("LINK_PREV")
+        Undefine("TITLE_PREV")
+
+    # Next document.
+    i = page_index + 1
+
+    if pfile[i]:
+        if pfile[i].startswith('/'):
+            Define("LINK_NEXT", ChangeExtension(pfile[i]))
+        else:
+            Define("LINK_NEXT", ChangeExtension("{}{}".format(pathToRoot, pfile[i])))
+
+        Define("TITLE_NEXT", ptitle[i])
+    else:
+        Undefine("LINK_NEXT")
+        Undefine("TITLE_NEXT")
 
 def show_version():
     """
