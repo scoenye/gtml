@@ -59,11 +59,16 @@ delim2 = '>>'
 argsep = ','
 
 include_path = []
+output_files = []
 output_dir = ''
+base_name = ''
 
 be_silent = False
 debug = False
 entities = True     # Convert HTML entities or not?
+compression = False
+generate_makefiles = False
+
 line_counter = 0
 exit_status = 0
 error_count = 0
@@ -1155,6 +1160,61 @@ def Member(element, check_list):
         return True
 
     return False
+
+def ProcessSourceFile(name, parent, level):
+    """
+    What to do with a given source file. The level of the page in the document
+    may be given.
+    :param name:
+    :param parent:
+    :param level:
+    :return:
+    """
+    global defines, characters, file_to_process
+
+    save_defines = defines
+    save_characters = characters
+
+    # Process source files only if asked.
+    if file_to_process and not Member(name, file_to_process):
+        return
+
+    Notice("--- $name$level ---")
+
+    if not os.access(name, os.R_OK):
+        Error("`$name' unreadable")
+    else:
+        oname = ResolveOutputName(name)
+        Define("ROOT_PATH", GetPathToRoot(name))
+        Define("BASENAME", GetOutputBasename(oname))
+        Define("FILENAME", '{}{}'.format(base_name, ext_target))
+        Define("PATHNAME", GetPathname(name))
+
+        if name == oname:
+            Error("source `{}' same as target `{}'".format(name, oname))
+        else:
+            dependencies[oname] += '{} {}'.format(parent, name)
+            output_files.append(oname)
+
+            # if FAST_GENERATION process files only if newer than output.
+            if "FAST_GENERATION" not in defines or \
+                    (os.stat(name))['st_mtime'] > (os.stat(oname))['st_mtime']:
+                SetFileReferences()
+                SetTimestamps(name)
+
+                if not generate_makefiles:
+                    OUTFILE = open(oname, 'w')
+
+                ProcessLines(name)
+
+                if not generate_makefiles:
+                    OUTFILE.close()
+            else:
+                Warn("output more recent than input, nothing done")
+
+    defines = save_defines
+    characters = save_characters
+
 
 def show_version():
     """
