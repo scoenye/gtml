@@ -537,6 +537,7 @@ def SplitArgs(arg_string):
     :param arg_string:
     :return:
     """
+    args = []
     temp = arg_string.split(argsep)
 
     while len(temp) > 0:
