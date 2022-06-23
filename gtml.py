@@ -1115,6 +1115,34 @@ def GenSiteMap():
 
     return map_entry
 
+def ResolveOutputName(file):
+    """
+    Returns the output name of a given source filename.
+    :param file:
+    :return:
+    """
+    file = ChangeExtension(file)
+
+    if output_dir != '' and file.startswith('/'):
+        file = '{}/{}'.format(output_dir, file)
+
+    # Make sure the directory exists for the output file.
+    n = 0
+    # Go over the file name and locate all /
+    # Try each incremental path segment and create it if
+    # it does not yet exist.
+    while n != -1:
+        n = file.find('/', n)   # -1 if not found
+
+        if n != -1:
+            dir = file[:n]
+            if not os.path.isdir(dir):  # from <magog@swipnet.se>
+                os.mkdir(dir, 0o755)
+            n += 1
+
+    return file
+
+
 def show_version():
     """
     Display the program's current version
