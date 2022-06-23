@@ -1143,6 +1143,19 @@ def ResolveOutputName(file):
     return file
 
 
+def Member(element, check_list):
+    """
+    Return True if a given string is a member of a given list,
+    False otherwise.
+    :param element: 
+    :param check_list: 
+    :return: 
+    """
+    if element in check_list:
+        return True
+
+    return False
+
 def show_version():
     """
     Display the program's current version
