@@ -53,6 +53,7 @@ from os import environ
 ext_source  = [".gtm", ".gtml"]
 ext_project = [".gtp"]
 ext_target  = ".html"
+configuration_files = [".gtmlrc", "gtml.conf"]
 
 delim1 = '<<'
 delim2 = '>>'
@@ -1624,20 +1625,22 @@ NOTES:
     )
 
     parser.add_argument('-M',
-                        nargs='?',
-                        default='GNUmakefile',
+                        const='GNUmakefile',
                         help="""Do not produce output files but generate a makefile 
                                 ready to create them with gtml. If no <file> is
                                 given the generated file will be called `GNUmakefile'.""",
-                        metavar='file')
+                        metavar='file',
+                        nargs='?')
 
     parser.add_argument('-D',
                         help='Define constant <macro> eventually defined by <definition>.',
-                        metavar='macro[=definition]')
+                        metavar='macro[=definition]',
+                        action='append')
 
     parser.add_argument('-F',
                         help='Only process the specified file in the next project file.',
-                        metavar='file')
+                        metavar='file',
+                        action='append')
 
     parser.add_argument('--version',
                         help="Show gtml's current version",
@@ -1648,7 +1651,7 @@ NOTES:
                         action='store_true')
 
     parser.add_argument('file',
-                        nargs='+')
+                        nargs='*')
 
     args = parser.parse_args()
 
@@ -1658,3 +1661,51 @@ NOTES:
 
     for env_key in environ:
         Define(env_key, environ[env_key])
+
+    # Parse default configuration project file if present.
+
+    # Attempt to process .gtmlrc and gtml.conf in the user home directory
+    for i in configuration_files:
+        confFile = environ['HOME'] + "/" + i
+        if os.access(confFile, os.R_OK):
+            ProcessProjectFile(confFile, False)
+
+    # Attempt to process .gtmlrc and gtml.conf in the current directory
+    for i in configuration_files:
+        if os.access(i, os.R_OK):
+            ProcessProjectFile(i, False)
+
+    # Process the command line.
+    # Define a macro.
+    if args.D:
+        for macro in args.D:
+            parts = macro.split('=', maxsplit=1)
+            parts.append('')    # Easiest way to ensure a 2nd part is present.
+            Define(parts[0], parts[1])
+
+    # Generate a makefile?
+    if args.M:
+        makefile_name = args.M
+        generate_makefiles = True
+
+    # Specify which file to process in the next project file.
+    if args.F:
+        for file in args.F:
+            file_to_process.append(file)
+
+    # Process files.
+    for file in args.file:
+        if isProjectFile(file):
+            ProcessProjectFile(file, True)
+        elif isSourceFile(file):
+            ProcessSourceFile(file, "", 0)
+        else:
+            Warn("Skipping `{}' (unknown file type)".format(file))
+
+    if generate_makefiles:
+        GenerateMakefile()
+
+    # if nbError != 0:
+    #     Notice("\n${} errors occurred during process.".format(nbError))
+
+    exit(exit_status)
