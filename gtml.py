@@ -265,7 +265,7 @@ def FormatTimestamp(format_str):
     """
     Returns a printable time/date string based on a given format string.
 
-    The format string is passed in the variable $stamp, and the following
+    The format string is passed in the variable stamp, and the following
     substitutions are made in it:
 
       $ss         -> seconds
@@ -1248,6 +1248,268 @@ def CompressLines(lines):
         line = line[:-1]
 
     return line + '\n'
+
+def ProcessLines(out_file, iname):
+    """
+    Process lines of a source file.
+    :param out_file:
+    :param iname: 
+    :return: 
+    """
+    global stamp, mstamp, dependencies
+
+    suppress = [False]
+    was_true = [False]
+    was_else = [False]
+    current = 0
+    if_level = 0
+
+    if not os.access (iname, os.R_OK):
+        Error("`{}' unreadable".format(iname))
+        return
+
+    INFILE = open(iname, 'r')
+
+    for line in ReadLine(INFILE):
+        # Allow GTML commands inside HTML comments.
+        if re.search(r'<!-- ###', line):
+            line = re.sub(r'<!-- ##', '', line)
+            line = re.sub(r'|-->.*$', '', line)
+            line = re.sub(r'\s*-->.*$', '', line)
+
+        line = line[:-1]        # Remove trailing \n
+
+        # Parse '#literal' command because if literal processing is ON,
+        # we simply print the line and continue to the next line.
+        if line.startswith('#literal'):
+            dummy, switch = line.split(maxsplit=1)
+
+            if switch.upper() == 'ON':
+                literal = True
+            elif switch.upper() == 'OFF':
+                literal = False
+            else:
+                Error("expecting #literal as `ON' or `OFF'")
+            continue
+
+        if literal:
+            if compression:
+                print(CompressLines(line), file=out_file)
+        
+            line = Substitute(line)
+            print (line, file=out_file)
+            continue
+
+        # Next parse the if(def)/elsif/else/endif to decide if we want to
+        # suppress any lines. 
+
+        # ifLevel = current level of nested ifs.
+        # current = operative level of nested ifs.  This is less than ifLevel
+        #   when an outer 'if' condition is false.
+        # @suppress = vector of suppression indicators at the different nesting levels.
+        # @wasTrue = vector of indicators for whether at least one condition in a sequence
+        #   of if...elsif...elsif...else has already been true.  In that case the rest of
+        #   the conditions in the sequence are ignored.
+        # @wasElse = vector of indicators of whether an 'else' condition has already been
+        #   seen.
+        if line.startswith('#if') or line.startswith('#elsif'):
+            if line.startswith('#if'):
+                if_level += 1
+                was_if = True
+            else:
+                line = line.replace('#els', '#', 1)
+                was_if = False
+        
+            line = Substitute(line)
+        
+            if line.startswith('#ifdef') or line.startswith('#ifndef'):
+                dummy, var = line.split(maxsplit=1)
+                match = GetValue(var) != ''
+                if not line.startswith('#ifndef'):
+                    match = not match
+            else:
+                condl, var, comp, value = line.split(maxsplit=3)
+
+                if comp == '==':
+                    match = (var == value)
+                elif comp == '!=':
+                    match = not (var == value)
+                else:
+                    Error("unknown comparator `{}'".format(comp))
+                    match = False
+        
+            if was_if:
+                suppress.append(not match)
+                was_true.append(match)
+                was_else.append(False)
+                if not suppress[current]:
+                    current = if_level
+            else:
+                if if_level == 0:
+                    condl = re.sub(r'^#', '#els', line)
+                    Error("{} with no preceding #if".format(condl))
+                elif was_true[if_level]:
+                    suppress[if_level] = True
+                else:
+                    suppress[if_level] = not match
+                    was_true[if_level] = match
+
+            continue
+        elif line.startswith('#else'):
+            if if_level == 0:
+                Error("#else with no preceding #if")
+            elif was_else[if_level]:
+                Error("multiple '#else's")
+            else:
+                suppress[if_level] = was_true[if_level]
+                was_else[if_level] = True
+        
+            continue
+        elif line.startswith('#endif'):
+            if if_level == 0:
+                Error("unmatched #endif")
+            else:
+                suppress.pop()
+                was_true.pop()
+                was_else.pop()
+                if current == if_level:
+                    current -= 1
+
+                if_level -= 1
+        
+            continue
+
+        # Skip lines if current ignoring state says so.
+        if suppress[current]:
+            continue
+
+        # Now do others commands.
+        if line.startswith('#entities'):
+            dummy, switch = line.split(maxsplit=1)
+            
+            if switch.upper() == 'ON':
+                literal = True
+            elif switch.upper() == 'OFF':
+                literal = False
+            else:
+                Error("expecting #literal as `ON' or `OFF'")
+            continue
+
+        # Included files.
+        elif line.startswith('#include'):
+            my_prev_literal_setting = literal
+
+            if line.startswith('#includeliteral'):
+                literal = True
+
+            if compression:
+                print(CompressLines(line), file=out_file)
+            
+            line = Substitute(line)
+            line = re.sub(r'^#include(literal)?[ \t]*', '', line)
+            line = re.sub(r'".*$', '', line)
+
+            file = line
+            file = ResolveIncludeFile(file)
+            dependencies[iname] += '{} '.format(file)
+
+            if file != '':
+                # TODO #                Notice("    --- file\n")
+                ProcessLines(out_file, file)
+        
+            literal = my_prev_literal_setting
+            continue
+
+        # Characters translation can be defined here.
+        if re.match(r'#definechar[ \t]', line):
+            dummy, key, value = line.split(maxsplit=2)
+
+            characters[key] = value
+        # Macros can be defined here.
+        elif re.match(r'#define[ \t]', line):
+            dummy, key, value = line.split(maxsplit=2)
+
+            key_match = re.search(r'(.+)\((.+)\)', line)
+            if key_match:
+                Undefine(key_match.group(1))
+
+            key, value = Markup(key, value)
+            Define(key, value)
+        elif re.match(r'#newdefine[ \t]', line):
+            dummy, key, value = line.split(maxsplit=2)
+
+            if not GetValue(key) == '':
+                 continue
+
+            key, value = Markup(key, value)
+            Define(key, value)
+        elif line.startswith('#define!'):
+            line=Substitute(line)
+            dummy, key, value = line.split(maxsplit=2)
+
+            key_match = re.search(r'(.+)\((.+)\)', line)
+            if key_match:
+                Undefine(key_match.group(1))
+
+            key, value = Markup(key, value)
+            Define(key, value)
+        elif line.startswith('#newdefine!'):
+            line = Substitute(line)
+            dummy, key, value = line.split(maxsplit=2)
+            if GetValue(key) != '':
+                continue
+
+            key, value = Markup(key, value)
+            Define(key, value)
+        elif line.startswith(r'#define+'):
+            dummy, key, value = line.split(maxsplit=2)
+            key, value = Markup(key, value)
+            Define(key, GetValue(key) + value)
+        elif re.match(r'#undef[ \t]', line):
+            dummy, key = line.split(maxsplit=1)
+            Undefine(key)
+
+        # Saving bandwidth file compression eliminates anything not necessary
+        # for correct display of content on the client browser.
+        elif line.startswith(r'#compress'):
+            dummy, switch = line.split(maxsplit=1)
+
+            if switch.upper('ON'):
+                compression = True
+            elif switch.upper('OFF'):
+                if compression:
+                    print(CompressLines(line), file=out_file)
+                compression = False
+            else:
+                Error("expecting #compress as `ON' or `OFF'")
+        # Table of contents can be used here.
+        elif line.startswith(r'#toc') or line.startwith(r'#sitemap'):
+            GenSiteMap()
+            if compression :
+                # lines is a CompressLines variable??
+                lines.append(line)
+            else:
+                print(line, file=out_file)
+        # Timestamp format can be defined here.
+        elif re.match(r'#timestamp[ \t]', line):
+            dummy, stamp = line.split(maxsplit=1)
+            SetTimestamps(iname)
+        elif re.match(r'#mtimestamp[ \t]', line):
+            dummy, mstamp = line.split(maxsplit=1)
+            SetTimestamps(iname)
+        # Normal lines.
+        elif not line.startswith(r'#'):
+            line = Substitute(line)
+
+            if compression:
+                lines.append(line)
+            else:
+                print(line, file=out_file)
+
+    if compression:
+        print(CompressLines, file=out_file)
+
+    INFILE.close()
 
 def show_version():
     """
