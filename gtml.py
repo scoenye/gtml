@@ -68,6 +68,7 @@ debug = False
 entities = True     # Convert HTML entities or not?
 compression = False
 generate_makefiles = False
+makefile_name = 'GNUmakefile'
 
 line_counter = 0
 exit_status = 0
@@ -1444,7 +1445,7 @@ def ProcessLines(out_file, iname):
             key, value = Markup(key, value)
             Define(key, value)
         elif line.startswith('#define!'):
-            line=Substitute(line)
+            line = Substitute(line)
             dummy, key, value = line.split(maxsplit=2)
 
             key_match = re.search(r'(.+)\((.+)\)', line)
@@ -1511,6 +1512,87 @@ def ProcessLines(out_file, iname):
 
     INFILE.close()
 
+def GenerateMakefile():
+    """
+    Generate a makefile from dependencies.
+    :return: 
+    """
+    global output_dir, ext_project, ext_source, extensions
+
+    OUTFILE = open(makefile_name, 'w')
+
+    # makefile basics.
+    print("# GTML generated makefile, usable with GNU make.", file=OUTFILE)
+    print("", file=OUTFILE)
+    print("GTML = gtml", file=OUTFILE)
+    print("RM   = rm", file=OUTFILE)
+    print("", file=OUTFILE)
+    print(".SUFFIXES: "
+          + ' '.join(ext_project)
+          + ' '
+          + ' '.join(ext_source)
+          + ' '
+          + ' '.join(extensions), file=OUTFILE)
+    print("", file=OUTFILE)
+    print(".PHONY: clean", file=OUTFILE)
+    print("", file=OUTFILE)
+
+    # Generated files list.
+    print("##############", file=OUTFILE)
+    print("# Files list #", file=OUTFILE)
+    print("##############", file=OUTFILE)
+    print("", file=OUTFILE)
+    print ("OUTPUT_FILES = \\", file=OUTFILE)
+
+    for i in range(len(output_files)):
+        print("\t{} \\".format(output_files[i]), file=OUTFILE)
+
+    print("\t$outputFiles[$#outputFiles]", file=OUTFILE)
+    print("", file=OUTFILE)
+
+    # Rules.
+    print("#####################", file=OUTFILE)
+    print("# Processsing rules #", file=OUTFILE)
+    print("#####################", file=OUTFILE)
+    print("", file=OUTFILE)
+    print("all: \\$(OUTPUT_FILES)", file=OUTFILE)
+    print("", file=OUTFILE)
+    print("clean:", file=OUTFILE)
+    print("\t-\\$(RM) \\$(OUTPUT_FILES)", file=OUTFILE)
+    print("\t-\\$(RM) *~", file=OUTFILE)
+    print("", file=OUTFILE)
+
+    if output_dir != '':
+        output_dir += '/'
+
+    output_dir.replace('//', '/')   # Replace // in path with /
+
+    for ext in ext_source:
+        for ext2 in extensions:
+            print("{}}\\%{}}: \\%{}}".format(output_dir, ext2, ext), file=OUTFILE)
+            print("\t\\$(GTML) -F\\$< \\$(word 1, \\$(word 2, \\$^) \\$<)", file=OUTFILE)
+            print("", file=OUTFILE)
+
+    # Dependencies.
+    print("#####################", file=OUTFILE)
+    print("# File dependencies #", file=OUTFILE)
+    print("#####################", file=OUTFILE)
+    print("", file=OUTFILE)
+
+    for file in dependencies:
+        dependencies[file] = dependencies[file].lstrip()
+        print("{} {}".format(file, dependencies[file]), file=OUTFILE)
+
+        if not Member(file, output_files):
+            print("\ttouch \\$\\@", file=OUTFILE)
+        elif not file.endswidth(ext_target):
+            print("\t\\$(GTML) -F\\$(word 2, \\$^) \\$(word 1, \\$^)", file=OUTFILE)
+
+    print("", file=OUTFILE)
+    print("# End of makefile.", file=OUTFILE)
+
+    OUTFILE.close()
+
 def show_version():
     """
     Display the program's current version
@@ -1523,7 +1605,7 @@ Copyright (C) 1999 Bruno Beaufils
 Copyright (C) 2004 Andrew E. Schulman
 Copyright (C) 2022 Kenneth J. Pronovici
 
-GTML comes with ABSOLUTELY NO WARRANTY;
+GTML comes with ABSOLUTELY NO WARRANTY
 This is free software, and you are welcome to redistribute it
 under the conditions defined in the GNU General Public License.
 """)
@@ -1531,10 +1613,10 @@ under the conditions defined in the GNU General Public License.
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        epilog=r"""
+        epilog="""
 NOTES:
     Before processing command line arguments, gtml try to process project files
-    `\${HOME}/.gtmlrc', `\${HOME}/gtml.conf', `./.gtmlrc' and `./gtml.conf' in
+    `${HOME}/.gtmlrc', `${HOME}/gtml.conf', `./.gtmlrc' and `./gtml.conf' in
     this order, allowing one to add to/modify the default behavior of gtml.
 
     Exit status is 1 if errors have been encountered, and 0 if all was OK.""",
