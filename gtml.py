@@ -403,11 +403,14 @@ def GetValue(key):
 def Undefine(key):
     """
     Remove a specified macro from the list of macros.
-    :param key:
+    :param key: key to remove from the macro lists.
     :return:
     """
-    del defines[key]
-    del characters[key]
+    if key in defines:
+        del defines[key]
+
+    if key in characters:
+        del characters[key]
 
 def Markup(statement, value):
     """
