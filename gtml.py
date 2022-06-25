@@ -461,6 +461,8 @@ def Substitute(line):
     :param line:
     :return: the line with all macros substituted
     """
+    args_list = []
+
     # HTML entities may be converted.
     if entities:
         # The default case: substitute '<', '&', and '>'.
@@ -491,7 +493,7 @@ def Substitute(line):
         p1 = line.rfind(delim1, 0, p2)      # Locate the matching <<, before the >> found above.
 
         if p2 >= l1:                        # p2 == l1 for <<>>
-            key = line[p1+l1, p2-p1-l2]
+            key = line[p1+l1:p2-p1-l2]
 
             if re.search(r'^[^ \t]+[ \t]*\(.*\)$', key):
                 # Tag contains a keyword and arguments.
@@ -504,7 +506,7 @@ def Substitute(line):
             elif key == "__SYSTEM__":
                 value = subprocess.check_output(args_list[0])
             else:
-                value = defines[key]
+                value = GetValue(key)
 
                 for i in range(len(args_list)):
                     # Argument substitution.
@@ -520,7 +522,7 @@ def Substitute(line):
             if value == '' and not (key == "__PYTHON__" or key == "__SYSTEM__"):
                 Warn("undefined name `{}'".format(key))
 
-            match = re.search(r'\(\(\(MARKER([0-9])+\)\)\)', value)
+            match = re.search(r'\(\(\(MARKER(\d)+\)\)\)', value)
             if match:
                 Error("missing argument {}".format(match.group(1)))
 
@@ -528,7 +530,7 @@ def Substitute(line):
             if value == '(((BLANK)))':
                 value = ''
 
-            line[p1, p2-p1+l2] = value
+            line = line[:p1] + value + line[p2-p1+l2:]
         else:
             if value == '(((BLANK)))':
                 value = ''
