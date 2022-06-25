@@ -67,7 +67,7 @@ base_name = ''
 
 be_silent = False
 debug = False
-entities = True     # Convert HTML entities or not?
+entities = False     # Convert HTML entities or not?
 compression = False
 generate_makefiles = False
 makefile_name = 'GNUmakefile'
@@ -482,6 +482,7 @@ def Substitute(line):
     l1 = len(delim1)
     l2 = len(delim2)
 
+    value = ''
     more = True
 
     while more:
@@ -528,7 +529,6 @@ def Substitute(line):
 
             line[p1, p2-p1+l2] = value
         else:
-            # FIXME: something is missing here, but this is from the Perl version
             if value == '(((BLANK)))':
                 value = ''
 
@@ -940,13 +940,16 @@ def ProcessProjectFile(name, process):
 
         # Included files.
         elif re.match(r'include[ \t]', line):
-
             line = Substitute(line)
             result = re.search(r'^include[ \t]*"(.*)".*$', line)
-            file = result.group(1)
-            file = ResolveIncludeFile(file)
-            dependencies[name] += '{} '.format(file)
-            ProcessProjectFile(file, 0)
+            file_name = result.group(1)
+            file_name = ResolveIncludeFile(file_name)
+
+            if name not in dependencies:
+                dependencies[name] = ''
+
+            dependencies[name] += '{} '.format(file_name)
+            ProcessProjectFile(file_name, 0)
 
         # They can ask for all source files here.
         elif line.startswith('allsource'):
