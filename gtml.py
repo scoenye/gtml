@@ -54,6 +54,7 @@ ext_source  = [".gtm", ".gtml"]
 ext_project = [".gtp"]
 ext_target  = ".html"
 configuration_files = [".gtmlrc", "gtml.conf"]
+extensions = [ext_target]
 
 delim1 = '<<'
 delim2 = '>>'
@@ -78,7 +79,6 @@ defines = {}
 characters = {}
 file_aliases = {}
 dependencies = {}
-extensions = []
 stamp = ''
 mstamp = ''
 time_global = {}
@@ -1534,7 +1534,6 @@ def GenerateMakefile():
           + ' '.join(ext_source)
           + ' '
           + ' '.join(extensions), file=OUTFILE)
-    print("", file=OUTFILE)
     print(".PHONY: clean", file=OUTFILE)
     print("", file=OUTFILE)
 
@@ -1548,7 +1547,6 @@ def GenerateMakefile():
     for i in range(len(output_files)):
         print("\t{} \\".format(output_files[i]), file=OUTFILE)
 
-    print("\t$outputFiles[$#outputFiles]", file=OUTFILE)
     print("", file=OUTFILE)
 
     # Rules.
@@ -1556,11 +1554,11 @@ def GenerateMakefile():
     print("# Processsing rules #", file=OUTFILE)
     print("#####################", file=OUTFILE)
     print("", file=OUTFILE)
-    print("all: \\$(OUTPUT_FILES)", file=OUTFILE)
+    print("all: $(OUTPUT_FILES)", file=OUTFILE)
     print("", file=OUTFILE)
     print("clean:", file=OUTFILE)
-    print("\t-\\$(RM) \\$(OUTPUT_FILES)", file=OUTFILE)
-    print("\t-\\$(RM) *~", file=OUTFILE)
+    print("\t-$(RM) $(OUTPUT_FILES)", file=OUTFILE)
+    print("\t-$(RM) *~", file=OUTFILE)
     print("", file=OUTFILE)
 
     if output_dir != '':
@@ -1570,8 +1568,8 @@ def GenerateMakefile():
 
     for ext in ext_source:
         for ext2 in extensions:
-            print("{}}\\%{}}: \\%{}}".format(output_dir, ext2, ext), file=OUTFILE)
-            print("\t\\$(GTML) -F\\$< \\$(word 1, \\$(word 2, \\$^) \\$<)", file=OUTFILE)
+            print("{}%{}: %{}".format(output_dir, ext2, ext), file=OUTFILE)
+            print("\t$(GTML) -F$< $(word 1, $(word 2, $^) $<)", file=OUTFILE)
             print("", file=OUTFILE)
 
     # Dependencies.
