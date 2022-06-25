@@ -395,10 +395,10 @@ def SetFileReferences():
 def GetValue(key):
     """
     Get the value of a specified macro.
-    :param key:
-    :return:
+    :param key: name of the macro to look up
+    :return: value of the macro. None if the key did not exist.
     """
-    return defines[key]
+    return defines.get(key, '')
 
 def Undefine(key):
     """
