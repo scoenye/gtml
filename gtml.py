@@ -728,24 +728,23 @@ def ResolveIncludeFile(name):
 # Read a source line into a given file. Source lines may be written on
 # multiple lines via `\' character at the end.
 
-def ReadLine(file):
+def ReadLine(text_file):
     """
     Read a source line into a given file. Source lines may be written on
     multiple lines via `\' character at the end.
-    :param file:
-    :return:
+    :param text_file: open GTML project or source file
+    :return: string with one complete line
     """
     # Read a line from input file.
-    line = file.readline()
+    for line in text_file:
+        while line.endswith('\\\n'):
+            # We are on multilines, so remove last `\' and '\n'.
+            line = line[:-2]
 
-    while line.endswith('\\\n'):
-        # We are on multilines, so remove last `\' and '\n'.
-        line = line[:-2]
+            # Read a new line from input file.
+            line += text_file.readline()
 
-        # Read a new line from input file.
-        line += file.readline()
-
-    yield line
+        yield line
 
 def ProcessProjectFile(name, process):
     """
@@ -767,13 +766,14 @@ def ProcessProjectFile(name, process):
     if_level = 0
 
     if process:
-        Notice("=== Project file $name ===")
+        Notice("=== Project file {} ===".format(name))
     else:
-        Notice("--- Included project file $name ---")
+        Notice("--- Included project file {} ---".format(name))
 
     STREAM = open(name, 'r')
 
     for line in ReadLine(STREAM):
+        print('processing ', line)
         # Skip blank and comment lines.
         if line.startswith('//'):
             continue
@@ -1626,7 +1626,9 @@ NOTES:
                         const='GNUmakefile',
                         help="""Do not produce output files but generate a makefile 
                                 ready to create them with gtml. If no <file> is
-                                given the generated file will be called `GNUmakefile'.""",
+                                given the generated file will be called `GNUmakefile'.
+                                Use -- to separate the makefile option from the
+                                project files if the makefile name is not provided.""",
                         metavar='file',
                         nargs='?')
 
