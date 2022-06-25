@@ -493,7 +493,7 @@ def Substitute(line):
         p1 = line.rfind(delim1, 0, p2)      # Locate the matching <<, before the >> found above.
 
         if p2 >= l1:                        # p2 == l1 for <<>>
-            key = line[p1+l1:p2-p1-l2]
+            key = line[p1+l1:p2]
 
             if re.search(r'^[^ \t]+[ \t]*\(.*\)$', key):
                 # Tag contains a keyword and arguments.
@@ -995,7 +995,7 @@ def ProcessProjectFile(name, process):
                     plevel.append(level)
                     ptitle.append(title)
             else:
-                Warn("Skipping `$_' (unknown file type)")
+                Warn("Skipping `{}' (unknown file type)".format(line))
 
     # Process files with links to others.
     if not hierarchy_read:
