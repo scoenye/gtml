@@ -448,7 +448,8 @@ def Markup(statement, value):
             # ... non-0 length requirement means ,, breaks the loop
             while pos >= 0 and length > 0:  # sensible argument, also present in the value parameter
                 j = index + start           # New marker counter - does not change in this loop
-                value[pos: pos+length] = "(((MARKER{})))".format(j) # Replace the argument value with the marker
+                # Replace the argument value with the marker
+                value = value[:pos] + "(((MARKER{})))".format(j) + value[pos+length:]
                 pos = value.find(argument)  # Replace remaining occurrences of the argument
                 length = len(argument)      # with the same marker
 
