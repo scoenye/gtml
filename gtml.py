@@ -759,7 +759,7 @@ def ProcessProjectFile(name, process):
     :param process:
     :return:
     """
-    global stamp, mstamp, dependencies
+    global stamp, mstamp, dependencies, pfile, plevel, ptitle
 
     hierarchy_read = False
 
@@ -959,9 +959,9 @@ def ProcessProjectFile(name, process):
 
         # They can ask for hierarchy files process.
         elif line.startswith('hierarchy'):
-            for ii in range(len(pfile)):
-                SetLinks(ii)
-                ProcessSourceFile(pfile[ii], name, " ({})".format(plevel[ii]))
+            for index, file_name in enumerate(pfile):
+                SetLinks(index)
+                ProcessSourceFile(file_name, name, " ({})".format(plevel[index]))
 
             hierarchy_read = True
 
@@ -997,9 +997,9 @@ def ProcessProjectFile(name, process):
 
     # Process files with links to others.
     if not hierarchy_read:
-        for ii in range(len(pfile)):
-            SetLinks(ii)
-            ProcessSourceFile(pfile[ii], name, ' {}'.format(plevel[ii]))
+        for index, file_name in enumerate(pfile):
+            SetLinks(index)
+            ProcessSourceFile(file_name, name, ' {}'.format(plevel[index]))
 
     # Clean up a bit.
     if process:
