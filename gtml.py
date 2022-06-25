@@ -868,12 +868,17 @@ def ProcessProjectFile(name, process):
             characters[key] = value
         # Macros can be defined here.
         elif re.match(r'define[ \t]', line):
-            dummy, key, value = line.split(maxsplit=2)
-            match = re.search(r'(.+)\((.+)\)', key)
+            # TODO: flag define without key as error
+            # value is optional, so we can't use the cmd, key, value = line.split() approach
+            parts = line.split(maxsplit=2)
+            # Acts as value if one was not provided; ignored otherwise.
+            parts.append('')
+
+            match = re.search(r'(.+)\((.+)\)', parts[1])     # key looks like foo(bar...)?
             if match:
                 Undefine(match.group(1))
 
-            key, value = Markup(key, value)
+            key, value = Markup(parts[1], parts[2])
             Define(key, value)
         elif re.match(r'newdefine[ \t]', line):
             dummy, key, value = line.split(maxsplit=2)
