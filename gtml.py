@@ -984,7 +984,7 @@ def ProcessProjectFile(name, process):
                         Define(lkey, "<ul>(((MARKER0)))</ul>")
 
                     lkey = "__TOC_{}_ITEM__".format(level)
-                    if not lkey in defines:
+                    if lkey not in defines:
                         Define(lkey, '<li><a href="(((MARKER0)))">(((MARKER1)))</a>')
 
                     pfile.append(file)
@@ -1173,11 +1173,11 @@ def Member(element, check_list):
 
     return False
 
-def ProcessSourceFile(name, parent, level):
+def ProcessSourceFile(gtm_name, parent, level=''):
     """
     What to do with a given source file. The level of the page in the document
     may be given.
-    :param name:
+    :param gtm_name:
     :param parent:
     :param level:
     :return:
@@ -1188,37 +1188,42 @@ def ProcessSourceFile(name, parent, level):
     save_characters = characters
 
     # Process source files only if asked.
-    if file_to_process and not Member(name, file_to_process):
+    if file_to_process and not Member(gtm_name, file_to_process):
         return
 
-    Notice("--- $name$level ---")
+    Notice("--- {}{} ---".format(gtm_name, level))
 
-    if not os.access(name, os.R_OK):
+    if not os.access(gtm_name, os.R_OK):
         Error("`$name' unreadable")
     else:
-        oname = ResolveOutputName(name)
-        Define("ROOT_PATH", GetPathToRoot(name))
-        Define("BASENAME", GetOutputBasename(oname))
+        htm_name = ResolveOutputName(gtm_name)
+        Define("ROOT_PATH", GetPathToRoot(gtm_name))
+        Define("BASENAME", GetOutputBasename(htm_name))
         Define("FILENAME", '{}{}'.format(base_name, ext_target))
-        Define("PATHNAME", GetPathname(name))
+        Define("PATHNAME", GetPathname(gtm_name))
 
-        if name == oname:
-            Error("source `{}' same as target `{}'".format(name, oname))
+        if gtm_name == htm_name:
+            Error("source `{}' same as target `{}'".format(gtm_name, htm_name))
         else:
-            dependencies[oname] += '{} {}'.format(parent, name)
-            output_files.append(oname)
+            if htm_name not in dependencies:
+                dependencies[htm_name] = ''
+
+            dependencies[htm_name] += '{} {}'.format(parent, gtm_name)
+            output_files.append(htm_name)
 
             # if FAST_GENERATION process files only if newer than output.
             if "FAST_GENERATION" not in defines or \
                     not os.access(htm_name, os.R_OK) or \
                     os.stat(gtm_name).st_mtime > os.stat(htm_name).st_mtime:
                 SetFileReferences()
-                SetTimestamps(name)
+                SetTimestamps(gtm_name)
 
                 if not generate_makefiles:
-                    OUTFILE = open(oname, 'w')
+                    OUTFILE = open(htm_name, 'w')
 
-                ProcessLines(name)
+                # name is the GTML file name, Perl uses OUTFILE as a global and ProcessLines writes to it.
+                # Question: what is it set to if generate_makefiles is True?
+                ProcessLines(gtm_name)
 
                 if not generate_makefiles:
                     OUTFILE.close()
