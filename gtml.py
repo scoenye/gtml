@@ -620,7 +620,7 @@ def ChangeExtension(file_name):
         # => change to .html, but only if the original was upper case?
         if re.search(r'{}$'.format(extension), file_name,
                      flags=re.IGNORECASE):
-            file_name = re.sub(r'{}$'.format(extensions), ext_target, file_name)
+            file_name = re.sub(r'{}$'.format(extension), ext_target, file_name)
 
     return file_name
 
