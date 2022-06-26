@@ -1136,32 +1136,32 @@ def GenSiteMap():
 
     return map_entry
 
-def ResolveOutputName(file):
+def ResolveOutputName(file_name):
     """
     Returns the output name of a given source filename.
-    :param file:
+    :param file_name:
     :return:
     """
-    file = ChangeExtension(file)
+    file_name = ChangeExtension(file_name)      # Change GTML extension to HTML
 
-    if output_dir != '' and file.startswith('/'):
-        file = '{}/{}'.format(output_dir, file)
+    if output_dir != '' and file_name.startswith('/'):
+        file_name = '{}/{}'.format(output_dir, file_name)
 
     # Make sure the directory exists for the output file.
-    n = 0
+    separator_pos = 0
     # Go over the file name and locate all /
     # Try each incremental path segment and create it if
     # it does not yet exist.
-    while n != -1:
-        n = file.find('/', n)   # -1 if not found
+    while separator_pos != -1:
+        separator_pos = file_name.find('/', separator_pos)   # -1 if not found
 
-        if n != -1:
-            dir = file[:n]
-            if not os.path.isdir(dir):  # from <magog@swipnet.se>
-                os.mkdir(dir, 0o755)
-            n += 1
+        if separator_pos != -1:
+            path_name = file_name[:separator_pos]
+            if not os.path.isdir(path_name):  # from <magog@swipnet.se>
+                os.mkdir(path_name, 0o755)
+            separator_pos += 1
 
-    return file
+    return file_name
 
 
 def Member(element, check_list):
