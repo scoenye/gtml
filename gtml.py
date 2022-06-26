@@ -1023,55 +1023,55 @@ def SetLinks(page_index):
     Undefine("LINK_NEXT")
     Undefine("LINK_PREV")
 
-    # All links are relative to the root directory.
-    pathToRoot = GetPathToRoot(pfile[page_index])
+    # All links are relative to the site's root directory.
+    root_path = GetPathToRoot(pfile[page_index])
 
     Define("TITLE_CURRENT", ptitle[page_index])
 
     # Go up one level.
     up_file = ''
 
-    i = page_index - 1
+    index = page_index - 1      # Back up one level
 
-    while i >= 0 and plevel[i] >= plevel[page_index]:
-        i -= 1
+    while index >= 0 and plevel[index] >= plevel[page_index]:
+        index -= 1
 
-    if i >= 0 and plevel[i] < plevel[page_index]:
-        if pfile[i].startswith('/'):
-            Define("LINK_UP", ChangeExtension(pfile[i]))
+    if index >= 0 and plevel[index] < plevel[page_index]:
+        if pfile[index].startswith('/'):
+            Define("LINK_UP", ChangeExtension(pfile[index]))
         else:
-            Define("LINK_UP", ChangeExtension("{}{}".format(pathToRoot, pfile[i])))
+            Define("LINK_UP", ChangeExtension("{}{}".format(root_path, pfile[index])))
 
-        Define("TITLE_UP", ptitle[i])
-        up_file = pfile[i]
+        Define("TITLE_UP", ptitle[index])
+        up_file = pfile[index]
     else:
         Undefine("LINK_UP")
         Undefine("TITLE_UP")
 
     # Previous document.
-    i = page_index - 1
+    index = page_index - 1
 
-    if i >= 0 and pfile[i] and pfile[i] != up_file:
-        if pfile[i].startswith('/'):
-            Define("LINK_PREV", ChangeExtension(pfile[i]))
+    if index >= 0 and pfile[index] and pfile[index] != up_file:
+        if pfile[index].startswith('/'):
+            Define("LINK_PREV", ChangeExtension(pfile[index]))
         else:
-            Define("LINK_PREV", ChangeExtension("{}{}".format(pathToRoot, pfile[i])))
+            Define("LINK_PREV", ChangeExtension("{}{}".format(root_path, pfile[index])))
 
-        Define("TITLE_PREV", ptitle[i])
+        Define("TITLE_PREV", ptitle[index])
     else:
         Undefine("LINK_PREV")
         Undefine("TITLE_PREV")
 
     # Next document.
-    i = page_index + 1
+    index = page_index + 1
 
-    if pfile[i]:
-        if pfile[i].startswith('/'):
-            Define("LINK_NEXT", ChangeExtension(pfile[i]))
+    if index < len(pfile):
+        if pfile[index].startswith('/'):
+            Define("LINK_NEXT", ChangeExtension(pfile[index]))
         else:
-            Define("LINK_NEXT", ChangeExtension("{}{}".format(pathToRoot, pfile[i])))
+            Define("LINK_NEXT", ChangeExtension("{}{}".format(root_path, pfile[index])))
 
-        Define("TITLE_NEXT", ptitle[i])
+        Define("TITLE_NEXT", ptitle[index])
     else:
         Undefine("LINK_NEXT")
         Undefine("TITLE_NEXT")
