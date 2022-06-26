@@ -493,7 +493,8 @@ def Substitute(line):
         p1 = line.rfind(delim1, 0, p2)      # Locate the matching <<, before the >> found above.
 
         if p2 >= l1:                        # p2 == l1 for <<>>
-            key = line[p1+l1:p2]
+            token = line[p1:p2+l2]          # Entire token: <<content>>
+            key = token[l1:-l2]             # part between << and >>
 
             if re.search(r'^[^ \t]+[ \t]*\(.*\)$', key):
                 # Tag contains a keyword and arguments.
@@ -508,15 +509,10 @@ def Substitute(line):
             else:
                 value = GetValue(key)
 
-                for i in range(len(args_list)):
+                for index, argument in enumerate(args_list):
                     # Argument substitution.
-                    marker = '(((MARKER{})))'.format(i)
-                    marker_location = value.find(marker)
-                    while marker_location != -1:
-                        # Substitution template contains a replacement marker.
-                        length = len(marker)
-                        value[marker_location:marker_location+length] = args_list[i]
-                        marker_location = value.find(marker)
+                    marker = '(((MARKER{})))'.format(index)
+                    value = value.replace(marker, argument)
 
             # Make some verifications.
             if value == '' and not (key == "__PYTHON__" or key == "__SYSTEM__"):
@@ -530,7 +526,7 @@ def Substitute(line):
             if value == '(((BLANK)))':
                 value = ''
 
-            line = line[:p1] + value + line[p2-p1+l2:]
+            line = line.replace(token, value, 1)
         else:
             if value == '(((BLANK)))':
                 value = ''
