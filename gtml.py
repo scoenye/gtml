@@ -436,9 +436,9 @@ def Markup(statement, value):
             # Find rightmost occurrence of (((MARKERz)))
             last_arg = old_value[old_value.rfind("(((MARKER"):]
 
-            level = re.match(r'\(\(\(MARKER([0-9])+\)\)\).*$', last_arg)
+            level = re.match(r'\(\(\(MARKER(\d)+\)\)\).*$', last_arg)
             if level:
-                start = level.group(1) + 1          # Incoming argument will be old + 1
+                start = int(level.group(1)) + 1          # Incoming argument will be old + 1
 
         # Markup argument
         for index, argument in enumerate(arg_list): # Go over all the statement's arguments
