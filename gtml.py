@@ -760,7 +760,7 @@ def ProcessProjectFile(name, process):
     :param process:
     :return:
     """
-    global stamp, mstamp, dependencies, pfile, plevel, ptitle
+    global stamp, mstamp, dependencies, pfile, plevel, ptitle, file_to_process
 
     hierarchy_read = False
 
@@ -1315,11 +1315,12 @@ def ProcessLines(gtm_name, out_file=None):
             continue
 
         if literal:
-            if compression:
-                print(CompressLines(line), file=out_file)
-        
-            line = Substitute(line)
-            print (line, file=out_file)
+            if out_file is not None:
+                if compression:
+                    print(CompressLines(line), file=out_file)
+
+                line = Substitute(line)
+                print (line, file=out_file)
             continue
 
         # Next parse the if(def)/elsif/else/endif to decide if we want to
@@ -1424,9 +1425,9 @@ def ProcessLines(gtm_name, out_file=None):
             if line.startswith('#includeliteral'):
                 literal = True
 
-            if compression:
+            if compression and out_file is not None:
                 print(CompressLines(line), file=out_file)
-            
+
             line = Substitute(line)
             line = re.sub(r'^#include(literal)?[ \t]*"', '', line)
             line = re.sub(r'".*$', '', line)
@@ -1438,10 +1439,10 @@ def ProcessLines(gtm_name, out_file=None):
 
             dependencies[gtm_name] += '{} '.format(file)
 
-            if file != '':
+            if file != '' and out_file is not None:
                 # TODO #                Notice("    --- file\n")
                 ProcessLines(file, out_file)
-        
+
             literal = my_prev_literal_setting
             continue
 
@@ -1463,8 +1464,8 @@ def ProcessLines(gtm_name, out_file=None):
         elif re.match(r'#newdefine[ \t]', line):
             dummy, key, value = line.split(maxsplit=2)
 
-            if not GetValue(key) == '':
-                 continue
+            if GetValue(key) != '':
+                continue
 
             key, value = Markup(key, value)
             Define(key, value)
@@ -1502,7 +1503,7 @@ def ProcessLines(gtm_name, out_file=None):
             if switch.upper('ON'):
                 compression = True
             elif switch.upper('OFF'):
-                if compression:
+                if compression and out_file is not None:
                     print(CompressLines(line), file=out_file)
                 compression = False
             else:
@@ -1514,7 +1515,8 @@ def ProcessLines(gtm_name, out_file=None):
                 # lines is a CompressLines variable??
                 lines.append(line)
             else:
-                print(line, file=out_file)
+                if out_file is not None:
+                    print(line, file=out_file)
         # Timestamp format can be defined here.
         elif re.match(r'#timestamp[ \t]', line):
             dummy, stamp = line.split(maxsplit=1)
@@ -1529,9 +1531,10 @@ def ProcessLines(gtm_name, out_file=None):
             if compression:
                 lines.append(line)
             else:
-                print(line, file=out_file)
+                if out_file is not None:
+                    print(line, file=out_file)
 
-    if compression:
+    if compression and out_file is not None:
         print(CompressLines, file=out_file)
 
     INFILE.close()
@@ -1567,14 +1570,14 @@ def GenerateMakefile():
     print("", file=OUTFILE)
     print ("OUTPUT_FILES = \\", file=OUTFILE)
 
-    for i in range(len(output_files)):
-        print("\t{} \\".format(output_files[i]), file=OUTFILE)
+    for out_file in output_files:
+        print("\t{} \\".format(out_file), file=OUTFILE)
 
     print("", file=OUTFILE)
 
     # Rules.
     print("#####################", file=OUTFILE)
-    print("# Processsing rules #", file=OUTFILE)
+    print("# Processing rules #", file=OUTFILE)
     print("#####################", file=OUTFILE)
     print("", file=OUTFILE)
     print("all: $(OUTPUT_FILES)", file=OUTFILE)
@@ -1601,14 +1604,14 @@ def GenerateMakefile():
     print("#####################", file=OUTFILE)
     print("", file=OUTFILE)
 
-    for file in dependencies:
-        dependencies[file] = dependencies[file].lstrip()
-        print("{} {}".format(file, dependencies[file]), file=OUTFILE)
+    for file_name in dependencies:
+        dependencies[file_name] = dependencies[file_name].lstrip()
+        print("{} {}".format(file_name, dependencies[file_name]), file=OUTFILE)
 
-        if not Member(file, output_files):
-            print("\ttouch \\$\\@", file=OUTFILE)
-        elif not file.endswidth(ext_target):
-            print("\t\\$(GTML) -F\\$(word 2, \\$^) \\$(word 1, \\$^)", file=OUTFILE)
+        if not Member(file_name, output_files):
+            print("\ttouch $@", file=OUTFILE)
+        elif not file_name.endswith(ext_target):
+            print("\t$(GTML) -F$(word 2, $^) $(word 1, $^)", file=OUTFILE)
 
     print("", file=OUTFILE)
     print("# End of makefile.", file=OUTFILE)
