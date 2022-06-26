@@ -1262,26 +1262,27 @@ def CompressLines(lines):
 
     return line + '\n'
 
-def ProcessLines(out_file, iname):
+def ProcessLines(gtm_name, out_file=None):
     """
     Process lines of a source file.
+    :param gtm_name: GTML source file name
     :param out_file:
-    :param iname: 
     :return: 
     """
-    global stamp, mstamp, dependencies
+    global stamp, mstamp, dependencies, compression
 
     suppress = [False]
     was_true = [False]
     was_else = [False]
+    literal = False
     current = 0
     if_level = 0
 
-    if not os.access (iname, os.R_OK):
-        Error("`{}' unreadable".format(iname))
+    if not os.access (gtm_name, os.R_OK):
+        Error("`{}' unreadable".format(gtm_name))
         return
 
-    INFILE = open(iname, 'r')
+    INFILE = open(gtm_name, 'r')
 
     for line in ReadLine(INFILE):
         # Allow GTML commands inside HTML comments.
@@ -1419,16 +1420,19 @@ def ProcessLines(out_file, iname):
                 print(CompressLines(line), file=out_file)
             
             line = Substitute(line)
-            line = re.sub(r'^#include(literal)?[ \t]*', '', line)
+            line = re.sub(r'^#include(literal)?[ \t]*"', '', line)
             line = re.sub(r'".*$', '', line)
 
             file = line
             file = ResolveIncludeFile(file)
-            dependencies[iname] += '{} '.format(file)
+            if gtm_name not in dependencies:
+                dependencies[gtm_name] = ''
+
+            dependencies[gtm_name] += '{} '.format(file)
 
             if file != '':
                 # TODO #                Notice("    --- file\n")
-                ProcessLines(out_file, file)
+                ProcessLines(file, out_file)
         
             literal = my_prev_literal_setting
             continue
@@ -1496,7 +1500,7 @@ def ProcessLines(out_file, iname):
             else:
                 Error("expecting #compress as `ON' or `OFF'")
         # Table of contents can be used here.
-        elif line.startswith(r'#toc') or line.startwith(r'#sitemap'):
+        elif line.startswith(r'#toc') or line.startswith(r'#sitemap'):
             GenSiteMap()
             if compression :
                 # lines is a CompressLines variable??
@@ -1506,10 +1510,10 @@ def ProcessLines(out_file, iname):
         # Timestamp format can be defined here.
         elif re.match(r'#timestamp[ \t]', line):
             dummy, stamp = line.split(maxsplit=1)
-            SetTimestamps(iname)
+            SetTimestamps(gtm_name)
         elif re.match(r'#mtimestamp[ \t]', line):
             dummy, mstamp = line.split(maxsplit=1)
-            SetTimestamps(iname)
+            SetTimestamps(gtm_name)
         # Normal lines.
         elif not line.startswith(r'#'):
             line = Substitute(line)
