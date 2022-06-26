@@ -673,7 +673,10 @@ def AllSourceFiles():
             elif os.path.isdir('{}{}'.format(dir_name, entry)):
                 dirs.append('{}{}'.format(dir_name, entry))
 
-            dir_name = dirs.pop()
+            if dirs:
+                dir_name = dirs.pop()
+            else:
+                dir_name = ''
 
     return files
 
