@@ -130,7 +130,7 @@ def Error(message):
     if line_counter:
         Notice("    *** Error: line {}: {}.".format(line_counter, message))
     else:
-        Notice("    *** Error: {}}.".format(message))
+        Notice("    *** Error: {}.".format(message))
 
     exit_status |= 2
     error_count += 1
@@ -1214,7 +1214,8 @@ def ProcessSourceFile(name, parent, level):
 
             # if FAST_GENERATION process files only if newer than output.
             if "FAST_GENERATION" not in defines or \
-                    (os.stat(name))['st_mtime'] > (os.stat(oname))['st_mtime']:
+                    not os.access(htm_name, os.R_OK) or \
+                    os.stat(gtm_name).st_mtime > os.stat(htm_name).st_mtime:
                 SetFileReferences()
                 SetTimestamps(name)
 
