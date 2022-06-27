@@ -1138,19 +1138,25 @@ def GenSiteMap():
 def ResolveOutputName(file_name):
     """
     Returns the output name of a given source filename.
+    Creates the output directories if they do not yet exist.
     :param file_name:
     :return:
     """
     file_name = ChangeExtension(file_name)      # Change GTML extension to HTML
 
-    if output_dir != '' and file_name.startswith('/'):
+    # Stitch relative paths to the output base directory name
+    if output_dir != '' and not file_name.startswith('/'):
         file_name = '{}/{}'.format(output_dir, file_name)
 
     # Make sure the directory exists for the output file.
-    separator_pos = 0
-    # Go over the file name and locate all /
-    # Try each incremental path segment and create it if
-    # it does not yet exist.
+    # File names are now absolute, unless no output directory is specified.
+    # Starting at 1 skips the naked root directory for absolute files.
+    # If we're dealing with a relative path, the shortest possible first
+    # directory name is 1 character long. Start position 1 will find the /
+    # in the 2nd position.
+    separator_pos = 1
+    # Go over the file name and locate all /. Create each incremental
+    # path segment if it does not yet exist.
     while separator_pos != -1:
         separator_pos = file_name.find('/', separator_pos)   # -1 if not found
 
@@ -1161,7 +1167,6 @@ def ResolveOutputName(file_name):
             separator_pos += 1
 
     return file_name
-
 
 def Member(element, check_list):
     """
