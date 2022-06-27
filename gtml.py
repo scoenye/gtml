@@ -646,7 +646,7 @@ def GetOutputBasename(name):
     name = name.replace('\\', '/')
     last_slash = name.rfind('/')
 
-    base_name = name[:last_slash+1]
+    base_name = name[last_slash+1:]
     base_name = re.sub(r'{}$'.format(ext_target), '', base_name)
 
     return base_name
@@ -691,7 +691,7 @@ def GetPathToRoot(name):
     last_slash = basename.rfind('/')
 
     if last_slash != -1:
-        basename = basename[:last_slash+1]
+        basename = basename[last_slash+1:]
 
     path_to_root = re.sub(r'{}'.format(basename), '', name)
     path_to_root = re.sub(r'[^/.]+/', '../', path_to_root)
@@ -1192,8 +1192,8 @@ def ProcessSourceFile(gtm_name, parent, level=''):
     """
     global defines, characters, file_to_process
 
-    save_defines = defines
-    save_characters = characters
+    save_defines = defines.copy()
+    save_characters = characters.copy()
 
     # Process source files only if asked.
     if file_to_process and not Member(gtm_name, file_to_process):
@@ -1202,12 +1202,12 @@ def ProcessSourceFile(gtm_name, parent, level=''):
     Notice("--- {}{} ---".format(gtm_name, level))
 
     if not os.access(gtm_name, os.R_OK):
-        Error("`$name' unreadable")
+        Error("`{}' unreadable".format(gtm_name))
     else:
         htm_name = ResolveOutputName(gtm_name)
         Define("ROOT_PATH", GetPathToRoot(gtm_name))
         Define("BASENAME", GetOutputBasename(htm_name))
-        Define("FILENAME", '{}{}'.format(base_name, ext_target))
+        Define("FILENAME", '{}{}'.format(GetValue(base_name), ext_target))
         Define("PATHNAME", GetPathname(gtm_name))
 
         if gtm_name == htm_name:
@@ -1228,13 +1228,12 @@ def ProcessSourceFile(gtm_name, parent, level=''):
 
                 if not generate_makefiles:
                     OUTFILE = open(htm_name, 'w')
-
-                # name is the GTML file name, Perl uses OUTFILE as a global and ProcessLines writes to it.
-                # Question: what is it set to if generate_makefiles is True?
-                ProcessLines(gtm_name)
-
-                if not generate_makefiles:
+                    ProcessLines(gtm_name, OUTFILE)
                     OUTFILE.close()
+                else:
+                    # name is the GTML file name, Perl uses OUTFILE as a global and ProcessLines writes to it.
+                    # Question: what is it set to if generate_makefiles is True?
+                    ProcessLines(gtm_name)
             else:
                 Warn("output more recent than input, nothing done")
 
