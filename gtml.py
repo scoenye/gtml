@@ -1217,7 +1217,7 @@ def ProcessSourceFile(gtm_name, parent, level=''):
                 dependencies[htm_name] = ''
 
             dependencies[htm_name] += '{} {}'.format(parent, gtm_name)
-            output_files.append(htm_name)
+            output_files.append(htm_name)       # TODO: don't append again if already present
 
             # if FAST_GENERATION process files only if newer than output.
             if "FAST_GENERATION" not in defines or \
@@ -1443,7 +1443,7 @@ def ProcessLines(gtm_name, out_file=None):
 
             dependencies[gtm_name] += '{} '.format(file)
 
-            if file != '' and out_file is not None:
+            if file != '':
                 # TODO #                Notice("    --- file\n")
                 ProcessLines(file, out_file)
 
