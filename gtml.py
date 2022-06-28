@@ -657,26 +657,27 @@ def AllSourceFiles():
     :return:
     """
     files = []
-    dirs = ['.']
+    dirs = []
 
-    dir_name = dirs.pop()      # Start off with the current directory
+    dir_name = '.'      # Start off with the current directory
+    base_path = ''
 
-    while dir_name:
+    while True:
+        if dir_name != '.':
+            base_path = dir_name + '/'
+
         for entry in os.listdir(dir_name):
-            if dir_name == '.':
-                dir_name = ''
-            else:
-                dir_name += '/'
+            path = '{}{}'.format(base_path, entry)
 
-            if isSourceFile(entry):
-                files.append('{}{}'.format(dir_name, entry))
-            elif os.path.isdir('{}{}'.format(dir_name, entry)):
-                dirs.append('{}{}'.format(dir_name, entry))
+            if isSourceFile(entry):     # This just cares about the extension
+                files.append(path)
+            elif os.path.isdir(path):
+                dirs.append(path)
 
-            if dirs:
-                dir_name = dirs.pop()
-            else:
-                dir_name = ''
+        if dirs:
+            dir_name = dirs.pop()
+        else:
+            break
 
     return files
 
@@ -778,7 +779,6 @@ def ProcessProjectFile(name, process):
     STREAM = open(name, 'r')
 
     for line in ReadLine(STREAM):
-        print('processing ', line)
         # Skip blank and comment lines.
         if line.startswith('//'):
             continue
