@@ -605,15 +605,14 @@ def ChangeExtension(file_name):
     :return:
     """
     for extension in ext_source:
+        # This construct handles non-HTML file extensions
+        # e.g. file.js..gtm -> file.js
         # Match can occur anywhere in the string, but it is
         # only erased when at the end of the file name??
-        # Also: ext_source elements already have a period?
         if re.search(r'\.{}'.format(extension), file_name):
             file_name = re.sub(r'\.{}$'.format(extension), '', file_name)
 
-        # And now we're looking to substitute the extension at
-        # the end, but we just erased the lower case variant?
-        # => change to .html, but only if the original was upper case?
+        # This handles the HTML files, and possibly things like gtm..gtm
         if re.search(r'{}$'.format(extension), file_name,
                      flags=re.IGNORECASE):
             file_name = re.sub(r'{}$'.format(extension), ext_target, file_name)
@@ -1217,7 +1216,8 @@ def ProcessSourceFile(gtm_name, parent, level=''):
                 dependencies[htm_name] = ''
 
             dependencies[htm_name] += '{} {}'.format(parent, gtm_name)
-            output_files.append(htm_name)       # TODO: don't append again if already present
+            if htm_name not in output_files:
+                output_files.append(htm_name)
 
             # if FAST_GENERATION process files only if newer than output.
             if "FAST_GENERATION" not in defines or \
@@ -1574,8 +1574,9 @@ def GenerateMakefile():
     print("", file=OUTFILE)
     print ("OUTPUT_FILES = \\", file=OUTFILE)
 
-    for out_file in output_files:
-        print("\t{} \\".format(out_file), file=OUTFILE)
+    print (' \\\n'.join('\t{}'.format(output_file)
+                        for output_file in output_files),
+           file=OUTFILE)
 
     print("", file=OUTFILE)
 
