@@ -680,21 +680,23 @@ def AllSourceFiles():
 
     return files
 
-def GetPathToRoot(name):
+# Original used [^/.], but that breaks on e.g. a/b.c/d/
+RE_PATH_RELATIVE = re.compile(r'[^/]+/')
+
+def GetPathToRoot(file_path):
     """
     Get the path to the root directory of the project from a given a file name.
     Always end with a `/' if non-null.
-    :param name:
+    :param file_path: path to a project file
     :return:
     """
-    basename = name.replace('\\', '/')     # "\" -> "/"
-    last_slash = basename.rfind('/')
+    basename = file_path.replace('\\', '/')     # "\" -> "/"
+    path_parts = basename.rsplit('/', maxsplit=1)
+    path_to_root = ''       # Default
 
-    if last_slash != -1:
-        basename = basename[last_slash+1:]
-
-    path_to_root = re.sub(r'{}'.format(basename), '', name)
-    path_to_root = re.sub(r'[^/.]+/', '../', path_to_root)
+    if len(path_parts) > 1:
+        # Replace each path segment with ../
+        path_to_root = RE_PATH_RELATIVE.sub('../', path_parts[0] + '/')
 
     return path_to_root
 
