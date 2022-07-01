@@ -753,13 +753,13 @@ def ReadLine(text_file):
 
         yield line
 
-def ProcessProjectFile(name, process):
+def ProcessProjectFile(project_file, process):
     """
     What to do with a given project file. If second argument is False then source
     files will not be processed (i.e. means the routine is called for an
     included project file).
-    :param name:
-    :param process:
+    :param project_file: name of the project file to process
+    :param process: True: delete the hierarchy build data on exit
     :return:
     """
     global stamp, mstamp, dependencies, pfile, plevel, ptitle, file_to_process
@@ -773,11 +773,11 @@ def ProcessProjectFile(name, process):
     if_level = 0
 
     if process:
-        Notice("=== Project file {} ===".format(name))
+        Notice("=== Project file {} ===".format(project_file))
     else:
-        Notice("--- Included project file {} ---".format(name))
+        Notice("--- Included project file {} ---".format(project_file))
 
-    STREAM = open(name, 'r')
+    STREAM = open(project_file, 'r')
 
     for line in ReadLine(STREAM):
         # Skip blank and comment lines.
@@ -873,15 +873,15 @@ def ProcessProjectFile(name, process):
         elif re.match(r'define[ \t]', line):
             # TODO: flag define without key as error
             # value is optional, so we can't use the cmd, key, value = line.split() approach
-            parts = line.split(maxsplit=2)
+            line_parts = line.split(maxsplit=2)
             # Acts as value if one was not provided; ignored otherwise.
-            parts.append('')
+            line_parts.append('')
 
-            match = re.search(r'(.+)\((.+)\)', parts[1])     # key looks like foo(bar...)?
+            match = re.search(r'(.+)\((.+)\)', line_parts[1])     # key looks like foo(bar...)?
             if match:
                 Undefine(match.group(1))
 
-            key, value = Markup(parts[1], parts[2])
+            key, value = Markup(line_parts[1], line_parts[2])
             Define(key, value)
         elif re.match(r'newdefine[ \t]', line):
             dummy, key, value = line.split(maxsplit=2)
@@ -948,62 +948,69 @@ def ProcessProjectFile(name, process):
             file_name = result.group(1)
             file_name = ResolveIncludeFile(file_name)
 
-            if name not in dependencies:
-                dependencies[name] = ''
+            if project_file not in dependencies:
+                dependencies[project_file] = ''
 
-            dependencies[name] += '{} '.format(file_name)
-            ProcessProjectFile(file_name, 0)
+            dependencies[project_file] += '{} '.format(file_name)
+            ProcessProjectFile(file_name, False)
 
         # They can ask for all source files here.
         elif line.startswith('allsource'):
-            for file in AllSourceFiles():
-                ProcessSourceFile(file, name)
+            for file_name in AllSourceFiles():
+                ProcessSourceFile(file_name, project_file)
 
         # They can ask for hierarchy files process.
         elif line.startswith('hierarchy'):
             for index, file_name in enumerate(pfile):
                 SetLinks(index)
-                ProcessSourceFile(file_name, name, " ({})".format(plevel[index]))
+                ProcessSourceFile(file_name, project_file, " ({})".format(plevel[index]))
 
+            # Any files added after the hierarchy command will not be processed by
+            # the automatic build at the end of file. Uncertain if calling hierarchy
+            # again will create duplicate entries.
             hierarchy_read = True
 
         # Everything else must be a source file name.
         else:
             line = Substitute(line)
-            file, level, title = line.split(maxsplit=2)
+            line_parts = line.split(maxsplit=2)
+            line_parts.extend(['', ''])      # The level + title combination is optional
+            file_name, level, title = line_parts[:3]
 
-            if file in file_aliases:
-                file = file_aliases[file]
+            if file_name in file_aliases:
+                file_name = file_aliases[file_name]
 
-            if file.startswith('/'):
-                Error("no absolute file references allowed: {}".format(file))
+            if file_name.startswith('/'):
+                Error("no absolute file references allowed: {}".format(file_name))
                 continue
 
-            if isSourceFile(file):
+            if isSourceFile(file_name):
                 if level == '':
-                    ProcessSourceFile(file, name)
+                    ProcessSourceFile(file_name, project_file)
                 else:
+                    # These files will be processed by the hierarchy build at the end
+                    # (unless there was a preceding hierarchy command)
                     lkey = "__TOC_{}__".format(level)
-                    if not lkey in defines:
+                    if lkey not in defines:
                         Define(lkey, "<ul>(((MARKER0)))</ul>")
 
                     lkey = "__TOC_{}_ITEM__".format(level)
                     if lkey not in defines:
                         Define(lkey, '<li><a href="(((MARKER0)))">(((MARKER1)))</a>')
 
-                    pfile.append(file)
-                    plevel.append(level)
-                    ptitle.append(title)
+                    pfile.append(file_name)     # De-aliased project file name
+                    plevel.append(level)        # Specified level
+                    ptitle.append(title)        # Specified title
             else:
                 Warn("Skipping `{}' (unknown file type)".format(line))
 
-    # Process files with links to others.
+    # Process files with links to others. User did not specify a hierarchy command.
     if not hierarchy_read:
         for index, file_name in enumerate(pfile):
             SetLinks(index)
-            ProcessSourceFile(file_name, name, ' {}'.format(plevel[index]))
+            ProcessSourceFile(file_name, project_file, ' {}'.format(plevel[index]))
 
-    # Clean up a bit.
+    # Clean up a bit. process is only set for command line project files.
     if process:
         del file_to_process
         del pfile
@@ -1019,8 +1026,8 @@ def SetLinks(page_index):
     :return:
     """
     # Be sure that there is nothing defined to start
-    Undefine("TITLE_CURRENT")
-    Undefine("TITLE_UP")
+    Undefine("TITLE_CURRENT")   # Page title for the file being processed
+    Undefine("TITLE_UP")        # Page title for the next level up
     Undefine("TITLE_NEXT")
     Undefine("TITLE_PREV")
     Undefine("LINK_UP")
@@ -1035,26 +1042,30 @@ def SetLinks(page_index):
     # Go up one level.
     up_file = ''
 
-    index = page_index - 1      # Back up one level
+    index = page_index - 1      # Back up one file
 
+    # The level is how far up/down the tree a file resides.
+    # Keep backing up (if possible) until a lower numbered level is reached.
     while index >= 0 and plevel[index] >= plevel[page_index]:
         index -= 1
 
+    # We found a lower level before running out of files
     if index >= 0 and plevel[index] < plevel[page_index]:
-        if pfile[index].startswith('/'):
+        if pfile[index].startswith('/'):    # Absolute path - leave as is
             Define("LINK_UP", ChangeExtension(pfile[index]))
         else:
             Define("LINK_UP", ChangeExtension("{}{}".format(root_path, pfile[index])))
 
         Define("TITLE_UP", ptitle[index])
         up_file = pfile[index]
-    else:
+    else:   # We ran out of files, or there is no lower level: nothing to link up to
         Undefine("LINK_UP")
         Undefine("TITLE_UP")
 
-    # Previous document.
+    # Start with the previous file again.
     index = page_index - 1
 
+    # There is a file and it is not the one we just used for the "up" link
     if index >= 0 and pfile[index] and pfile[index] != up_file:
         if pfile[index].startswith('/'):
             Define("LINK_PREV", ChangeExtension(pfile[index]))
@@ -1066,9 +1077,11 @@ def SetLinks(page_index):
         Undefine("LINK_PREV")
         Undefine("TITLE_PREV")
 
-    # Next document.
+    # Next file
     index = page_index + 1
 
+    # Happy as long as there is still a page left. Unlike the "prev" link, this
+    # one can cross to the next level.
     if index < len(pfile):
         if pfile[index].startswith('/'):
             Define("LINK_NEXT", ChangeExtension(pfile[index]))
