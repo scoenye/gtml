@@ -1371,7 +1371,7 @@ def ProcessLines(gtm_name, out_file=None):
             if line.startswith('#ifdef') or line.startswith('#ifndef'):
                 dummy, var = line.split(maxsplit=1)
                 match = GetValue(var) != ''
-                if not line.startswith('#ifndef'):
+                if line.startswith('#ifndef'):
                     match = not match
             else:
                 condl, var, comp, value = line.split(maxsplit=3)
