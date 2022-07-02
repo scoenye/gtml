@@ -69,6 +69,7 @@ be_silent = False
 debug = False
 entities = False     # Convert HTML entities or not?
 compression = False
+lines = []  # Collect all lines if compression is turned on, then render from here
 generate_makefiles = False
 makefile_name = 'GNUmakefile'
 
@@ -762,7 +763,7 @@ def ProcessProjectFile(project_file, process):
     :param process: True: delete the hierarchy build data on exit
     :return:
     """
-    global stamp, mstamp, dependencies, pfile, plevel, ptitle, file_to_process
+    global stamp, mstamp, dependencies, pfile, plevel, ptitle, file_to_process, compression
 
     hierarchy_read = False
 
@@ -777,7 +778,7 @@ def ProcessProjectFile(project_file, process):
     else:
         Notice("--- Included project file {} ---".format(project_file))
 
-    STREAM = open(project_file, 'r')
+    STREAM = open(project_file, 'r', encoding='utf-8')
 
     for line in ReadLine(STREAM):
         # Skip blank and comment lines.
@@ -787,7 +788,7 @@ def ProcessProjectFile(project_file, process):
         if line.isspace():  # Works properly with the \n terminator
             continue
 
-        line = line[:-1]    # Drop the \n
+        line = line.rstrip('\n')    # Drop the \n if present
 
         # Next process if(def)/elsif/else/endif to decide if we want to
         # suppress any lines.
@@ -1242,7 +1243,7 @@ def ProcessSourceFile(gtm_name, parent, level=''):
                 SetTimestamps(gtm_name)
 
                 if not generate_makefiles:
-                    OUTFILE = open(htm_name, 'w')
+                    OUTFILE = open(htm_name, 'w', encoding='utf-8')
                     ProcessLines(gtm_name, OUTFILE)
                     OUTFILE.close()
                 else:
@@ -1255,19 +1256,22 @@ def ProcessSourceFile(gtm_name, parent, level=''):
     defines = save_defines
     characters = save_characters
 
-def CompressLines(lines):
+def CompressLines():
     """
-    Compresses all lines, removing all thing not necessary for a browser.
-    :param lines:
+    Compresses all lines, removing all things not necessary for a browser.
     :return:
     """
-    line = ' '.join(lines)
+    global lines
+
+    line = ''.join(lines)
+    lines = []      # Clear the (to be) processed lines
 
     # Translate tabs and linefeed into spaces.
     tab_map = str.maketrans('\t\n', '  ')
     line.translate(tab_map)
 
     # Discard all comments.
+    # FIXME: this kills JavaScript inside "hide from the browser" comments
     del1 = '<!--'
     len1 = len(del1)
     del2 = '-->'
@@ -1296,7 +1300,7 @@ def ProcessLines(gtm_name, out_file=None):
     :param out_file:
     :return: 
     """
-    global stamp, mstamp, dependencies, compression
+    global stamp, mstamp, dependencies, compression, lines
 
     suppress = [False]
     was_true = [False]
@@ -1309,7 +1313,7 @@ def ProcessLines(gtm_name, out_file=None):
         Error("`{}' unreadable".format(gtm_name))
         return
 
-    INFILE = open(gtm_name, 'r')
+    INFILE = open(gtm_name, 'r', encoding='utf-8')
 
     for line in ReadLine(INFILE):
         # Allow GTML commands inside HTML comments.
@@ -1318,7 +1322,7 @@ def ProcessLines(gtm_name, out_file=None):
             line = re.sub(r'|-->.*$', '', line)
             line = re.sub(r'\s*-->.*$', '', line)
 
-        line = line[:-1]        # Remove trailing \n
+        line = line.rstrip('\n')      # Remove trailing \n if present
 
         # Parse '#literal' command because if literal processing is ON,
         # we simply print the line and continue to the next line.
@@ -1336,7 +1340,7 @@ def ProcessLines(gtm_name, out_file=None):
         if literal:
             if out_file is not None:
                 if compression:
-                    print(CompressLines(line), file=out_file)
+                    print(CompressLines(), file=out_file)
 
                 line = Substitute(line)
                 print (line, file=out_file)
@@ -1445,7 +1449,7 @@ def ProcessLines(gtm_name, out_file=None):
                 literal = True
 
             if compression and out_file is not None:
-                print(CompressLines(line), file=out_file)
+                print(CompressLines(), file=out_file)
 
             line = Substitute(line)
             line = re.sub(r'^#include(literal)?[ \t]*"', '', line)
@@ -1519,11 +1523,13 @@ def ProcessLines(gtm_name, out_file=None):
         elif line.startswith(r'#compress'):
             dummy, switch = line.split(maxsplit=1)
 
-            if switch.upper('ON'):
+            if switch.upper() == 'ON':
                 compression = True
-            elif switch.upper('OFF'):
+            elif switch.upper() == 'OFF':
+                # Do compress what was collected since compress was turned on
                 if compression and out_file is not None:
-                    print(CompressLines(line), file=out_file)
+                    print(CompressLines(), file=out_file)
+
                 compression = False
             else:
                 Error("expecting #compress as `ON' or `OFF'")
@@ -1554,7 +1560,7 @@ def ProcessLines(gtm_name, out_file=None):
                     print(line, file=out_file)
 
     if compression and out_file is not None:
-        print(CompressLines, file=out_file)
+        print(CompressLines(), file=out_file)
 
     INFILE.close()
 
@@ -1565,7 +1571,7 @@ def GenerateMakefile():
     """
     global output_dir, ext_project, ext_source, extensions
 
-    OUTFILE = open(makefile_name, 'w')
+    OUTFILE = open(makefile_name, 'w', encoding='utf-8')
 
     # makefile basics.
     print("# GTML generated makefile, usable with GNU make.", file=OUTFILE)
