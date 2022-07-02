@@ -56,8 +56,8 @@ ext_target = ".html"
 configuration_files = [".gtmlrc", "gtml.conf"]
 extensions = [ext_target]
 
-delim1 = '<<'
-delim2 = '>>'
+MACRO_START = '<<'
+MACRO_END = '>>'
 argsep = ','
 
 include_path = []
@@ -332,7 +332,7 @@ def Define(key, value):
     :param value:
     :return:
     """
-    global include_path, output_dir, delim1, delim2, argsep, ext_target, debug
+    global include_path, output_dir, MACRO_START, MACRO_END, argsep, ext_target, debug
 
     # Special macros.
     if (key == "__PYTHON__" or
@@ -349,10 +349,10 @@ def Define(key, value):
         output_dir = value
 
     if key == 'OPEN_DELIMITER':
-        delim1 = value
+        MACRO_START = value
 
     if key == 'CLOSE_DELIMITER':
-        delim2 = value
+        MACRO_END = value
 
     if key == 'ARGUMENT_SEPARATOR':
         argsep = value
@@ -490,21 +490,21 @@ def Substitute(line):
 
     # Macros have to be replaced by their values.
     # __NEWLINE__ and __TAB__ are substitute after all others.
-    special = delim1 + '__NEWLINE__' + delim2
+    special = MACRO_START + '__NEWLINE__' + MACRO_END
     line.replace(special, '__NEWLINE__')
 
-    special = delim1 + '__TAB__' + delim2
+    special = MACRO_START + '__TAB__' + MACRO_END
     line.replace(special, '__TAB__')
 
-    l1 = len(delim1)
-    l2 = len(delim2)
+    l1 = len(MACRO_START)
+    l2 = len(MACRO_END)
 
     value = ''
     more = True
 
     while more:
-        p2 = line.find(delim2)              # Leftmost occurrence of >>, -1 if not found
-        p1 = line.rfind(delim1, 0, p2)      # Locate the matching <<, before the >> found above.
+        p2 = line.find(MACRO_END)              # Leftmost occurrence of >>, -1 if not found
+        p1 = line.rfind(MACRO_START, 0, p2)      # Locate the matching <<, before the >> found above.
 
         if p2 >= l1:                        # p2 == l1 for <<>>
             token = line[p1:p2+l2]          # Entire token: <<content>>
@@ -1138,40 +1138,40 @@ def GenSiteMap():
 
         if level_old < plevel[xx]:
             map_entry += (" " * ((plevel[xx] - 1) * 2)) \
-                         + delim1 \
+                         + MACRO_START \
                          + "__TOC_{}__('".format(plevel[xx]) \
-                         + delim1 \
-                         + "__NEWLINE__{}".format(delim2)
+                         + MACRO_START \
+                         + "__NEWLINE__{}".format(MACRO_END)
 
             map_entry += (" " * ((plevel[xx] - 1) * 2 + 2)) \
-                         + delim1 \
+                         + MACRO_START \
                          + "__TOC_" + plevel[xx] \
                          + "_ITEM__('" + f \
                          + "'" + argsep \
                          + "'" + ptitle[xx] + "')" \
-                         + delim2 + delim1 \
-                         + "__NEWLINE__" + delim2
+                         + MACRO_END + MACRO_START \
+                         + "__NEWLINE__" + MACRO_END
 
         if level_old == plevel[xx]:
             map_entry += (" " * ((plevel[xx] - 1) * 2 + 2)) \
-                         + delim1 + "__TOC_" + plevel[xx] \
+                         + MACRO_START + "__TOC_" + plevel[xx] \
                          + "_ITEM__('" + f + "'" + argsep + "'" + ptitle[xx] + "')" \
-                         + delim2 + delim1 + "__NEWLINE__" + delim2
+                         + MACRO_END + MACRO_START + "__NEWLINE__" + MACRO_END
 
         if level_old > plevel[xx]:
             map_entry += (" " * (plevel[xx] * 2)) \
-                         + "')" + delim2 + delim1 + "__NEWLINE__" + delim2
+                         + "')" + MACRO_END + MACRO_START + "__NEWLINE__" + MACRO_END
 
             map_entry += (" " * ((plevel[xx] - 1) * 2 + 2)) \
-                         + delim1 + "__TOC_" + plevel[xx] \
+                         + MACRO_START + "__TOC_" + plevel[xx] \
                          + "_ITEM__('" + f + "'" + argsep + "'" + ptitle[xx] + "')" \
-                         + delim2 + delim1 + "__NEWLINE__" + delim2
+                         + MACRO_END + MACRO_START + "__NEWLINE__" + MACRO_END
 
         level_old = plevel[xx]
 
     for xx in range(level_old, 0, -1):
         map_entry += (" " * ((plevel[xx] - 2) * 2)) \
-                     + "\')" + delim2 + delim1 + "__NEWLINE__" + delim2
+                     + "\')" + MACRO_END + MACRO_START + "__NEWLINE__" + MACRO_END
 
     map_entry = Substitute(map_entry)
 
