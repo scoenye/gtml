@@ -50,9 +50,9 @@ import time
 
 from os import environ
 
-ext_source  = [".gtm", ".gtml"]
+ext_source = [".gtm", ".gtml"]
 ext_project = [".gtp"]
-ext_target  = ".html"
+ext_target = ".html"
 configuration_files = [".gtmlrc", "gtml.conf"]
 extensions = [ext_target]
 
@@ -67,7 +67,7 @@ base_name = ''
 
 be_silent = False
 debug = False
-entities = False     # Convert HTML entities or not?
+entities = False  # Convert HTML entities or not?
 compression = False
 lines = []  # Collect all lines if compression is turned on, then render from here
 generate_makefiles = False
@@ -86,7 +86,7 @@ time_global = {}
 
 # page level globals
 pfile = []
-plevel= []
+plevel = []
 ptitle = []
 file_to_process = []
 
@@ -100,6 +100,7 @@ def Notice(message):
     if not be_silent:
         print(message)
 
+
 def Debug(message):
     """
     Print a debug information.
@@ -108,6 +109,7 @@ def Debug(message):
     """
     if debug:
         print("########### {}".format(message))
+
 
 def Warn(message):
     """
@@ -119,6 +121,7 @@ def Warn(message):
         Notice("    !!! Warning: lines {}: {}.".format(line_counter, message))
     else:
         Notice("    !!! Warning: {}.".format(message))
+
 
 def Error(message):
     """
@@ -135,6 +138,7 @@ def Error(message):
 
     exit_status |= 2
     error_count += 1
+
 
 def SplitTime(time_stamp):
     """
@@ -248,21 +252,22 @@ def SplitTime(time_stamp):
         if mday == 3 or mday == 23:
             mdayth = "{}rd".format(mday)
 
-    time_global['sec']  = '{:02d}'.format(sec)
-    time_global['min']  = '{:02d}'.format(min)
+    time_global['sec'] = '{:02d}'.format(sec)
+    time_global['min'] = '{:02d}'.format(min)
     time_global['hour'] = '{:02d}'.format(hour)
 
-    time_global['wday'] = WeekDay[wday]    # from <agre3@ironbark.bendigo.latrobe.edu.au>
+    time_global['wday'] = WeekDay[wday]  # from <agre3@ironbark.bendigo.latrobe.edu.au>
     time_global['shortwday'] = time_global['wday'][:3]
 
     time_global['monthname'] = Month[mon]
-    time_global['shortmon']  = time_global['monthname'][:3]
+    time_global['shortmon'] = time_global['monthname'][:3]
 
     time_global['year'] = year
     time_global['syear'] = year % 100
     time_global['mday'] = mday
     time_global['mdayth'] = mdayth
     time_global['mon'] = mon + 1  # Because it starts from 0
+
 
 def FormatTimestamp(format_str):
     """
@@ -304,6 +309,7 @@ def FormatTimestamp(format_str):
 
     return format_str
 
+
 def SetTimestamps(name=''):
     """
     Defines eventual timestamps macros.
@@ -317,6 +323,7 @@ def SetTimestamps(name=''):
     if mstamp != "" and name != "":
         SplitTime(time.localtime(os.stat(name).st_mtime))
         Define("MTIMESTAMP", FormatTimestamp(mstamp))
+
 
 def Define(key, value):
     """
@@ -365,6 +372,7 @@ def Define(key, value):
 
     defines[key] = value
 
+
 def DefineFilename(key, value):
     """
     Add a file alias in the hash table of filename aliases.
@@ -378,6 +386,7 @@ def DefineFilename(key, value):
 
     file_aliases[key] = value
     Define(key, value)
+
 
 def SetFileReferences():
     """
@@ -393,6 +402,7 @@ def SetFileReferences():
         value = ChangeExtension(value)
         Define(alias, value)
 
+
 def GetValue(key):
     """
     Get the value of a specified macro.
@@ -400,6 +410,7 @@ def GetValue(key):
     :return: value of the macro. None if the key did not exist.
     """
     return defines.get(key, '')
+
 
 def Undefine(key):
     """
@@ -413,6 +424,7 @@ def Undefine(key):
     if key in characters:
         del characters[key]
 
+
 def Markup(statement, value):
     """
     Mark up a given definition in order to outline argument of a definition.
@@ -420,15 +432,15 @@ def Markup(statement, value):
     :param value:
     :return:
     """
-    match = re.search(r'(.+)\((.+)\)', statement)     # statement(arg_list)
+    match = re.search(r'(.+)\((.+)\)', statement)  # statement(arg_list)
 
     if match:
         # Tag has parens: MACRO(x,y) ....x....y....
-        statement = match.group(1)   # key is now just the command.
-        arguments = match.group(2)   # the argument list that was part of key
+        statement = match.group(1)  # key is now just the command.
+        arguments = match.group(2)  # the argument list that was part of key
         arg_list = arguments.split(argsep)
 
-        start = 0   # Default next marker if the key is not yet defined.
+        start = 0  # Default next marker if the key is not yet defined.
 
         # Verify if key is not yet defined, if yes find last argument.
         old_value = GetValue(statement)
@@ -439,7 +451,7 @@ def Markup(statement, value):
 
             level = re.match(r'\(\(\(MARKER(\d)+\)\)\).*$', last_arg)
             if level:
-                start = int(level.group(1)) + 1          # Incoming argument will be old + 1
+                start = int(level.group(1)) + 1  # Incoming argument will be old + 1
 
         # Markup argument
         for index, argument in enumerate(arg_list): # Go over all the statement's arguments
@@ -448,13 +460,14 @@ def Markup(statement, value):
 
             # ... non-0 length requirement means ,, breaks the loop
             while pos >= 0 and length > 0:  # sensible argument, also present in the value parameter
-                j = index + start           # New marker counter - does not change in this loop
+                j = index + start  # New marker counter - does not change in this loop
                 # Replace the argument value with the marker
-                value = value[:pos] + "(((MARKER{})))".format(j) + value[pos+length:]
+                value = value[:pos] + "(((MARKER{})))".format(j) + value[pos + length:]
                 pos = value.find(argument)  # Replace remaining occurrences of the argument
-                length = len(argument)      # with the same marker
+                length = len(argument)  # with the same marker
 
     return statement, value
+
 
 def Substitute(line):
     """
@@ -480,7 +493,7 @@ def Substitute(line):
     special = delim1 + '__NEWLINE__' + delim2
     line.replace(special, '__NEWLINE__')
 
-    special = delim1 + '__TAB__'  + delim2
+    special = delim1 + '__TAB__' + delim2
     line.replace(special, '__TAB__')
 
     l1 = len(delim1)
@@ -539,6 +552,7 @@ def Substitute(line):
 
     return line
 
+
 def SplitArgs(arg_string):
     """
     # Split a string containing arguments into an array of argument and returns
@@ -564,7 +578,7 @@ def SplitArgs(arg_string):
             args.append(arg)
         elif arg.startswith("'"):
             # Start of 'quoted arg' detected, look for end, and add argument.
-            while not re.match(r"(^'[^']*')",arg):
+            while not re.match(r"(^'[^']*')", arg):
                 arg += argsep + temp.pop(0)
 
             arg = arg.strip("'", arg)
@@ -573,6 +587,7 @@ def SplitArgs(arg_string):
             args.append(arg)
 
     return args
+
 
 def isProjectFile(file_name):
     """
@@ -586,6 +601,7 @@ def isProjectFile(file_name):
 
     return False
 
+
 def isSourceFile(file_name):
     """
     Return True if given filename may be a source file, False otherwise.
@@ -597,6 +613,7 @@ def isSourceFile(file_name):
             return True
 
     return False
+
 
 def ChangeExtension(file_name):
     """
@@ -620,6 +637,7 @@ def ChangeExtension(file_name):
 
     return file_name
 
+
 def GetPathname(name):
     """
     Get the pathname of a given file. Always ends with a `/' if non-null.
@@ -631,11 +649,12 @@ def GetPathname(name):
     last_slash = name.rfind('/')
 
     if last_slash != -1:
-        name = name[:last_slash+1]
+        name = name[:last_slash + 1]
     else:
         name = ''
 
     return name
+
 
 def GetOutputBasename(name):
     """
@@ -646,10 +665,11 @@ def GetOutputBasename(name):
     name = name.replace('\\', '/')
     last_slash = name.rfind('/')
 
-    base_name = name[last_slash+1:]
+    base_name = name[last_slash + 1:]
     base_name = re.sub(r'{}$'.format(ext_target), '', base_name)
 
     return base_name
+
 
 def AllSourceFiles():
     """
@@ -659,7 +679,7 @@ def AllSourceFiles():
     files = []
     dirs = []
 
-    dir_name = '.'      # Start off with the current directory
+    dir_name = '.'  # Start off with the current directory
     base_path = ''
 
     while True:
@@ -669,7 +689,7 @@ def AllSourceFiles():
         for entry in os.listdir(dir_name):
             path = '{}{}'.format(base_path, entry)
 
-            if isSourceFile(entry):     # This just cares about the extension
+            if isSourceFile(entry):  # This just cares about the extension
                 files.append(path)
             elif os.path.isdir(path):
                 dirs.append(path)
@@ -681,8 +701,10 @@ def AllSourceFiles():
 
     return files
 
+
 # Original used [^/.], but that breaks on e.g. a/b.c/d/
 RE_PATH_RELATIVE = re.compile(r'[^/]+/')
+
 
 def GetPathToRoot(file_path):
     """
@@ -691,15 +713,16 @@ def GetPathToRoot(file_path):
     :param file_path: path to a project file
     :return:
     """
-    basename = file_path.replace('\\', '/')     # "\" -> "/"
+    basename = file_path.replace('\\', '/')  # "\" -> "/"
     path_parts = basename.rsplit('/', maxsplit=1)
-    path_to_root = ''       # Default
+    path_to_root = ''  # Default
 
     if len(path_parts) > 1:
         # Replace each path segment with ../
         path_to_root = RE_PATH_RELATIVE.sub('../', path_parts[0] + '/')
 
     return path_to_root
+
 
 def ResolveIncludeFile(name):
     """
@@ -732,6 +755,7 @@ def ResolveIncludeFile(name):
     Error("no include file '{}' in `{}'".format(name, GetValue("INCLUDE_PATH")))
     return ''
 
+
 # ----------------------------------------------------------------------------
 # Read a source line into a given file. Source lines may be written on
 # multiple lines via `\' character at the end.
@@ -753,6 +777,7 @@ def ReadLine(text_file):
             line += text_file.readline()
 
         yield line
+
 
 def ProcessProjectFile(project_file, process):
     """
@@ -788,7 +813,7 @@ def ProcessProjectFile(project_file, process):
         if line.isspace():  # Works properly with the \n terminator
             continue
 
-        line = line.rstrip('\n')    # Drop the \n if present
+        line = line.rstrip('\n')  # Drop the \n if present
 
         # Next process if(def)/elsif/else/endif to decide if we want to
         # suppress any lines.
@@ -878,7 +903,7 @@ def ProcessProjectFile(project_file, process):
             # Acts as value if one was not provided; ignored otherwise.
             line_parts.append('')
 
-            match = re.search(r'(.+)\((.+)\)', line_parts[1])     # key looks like foo(bar...)?
+            match = re.search(r'(.+)\((.+)\)', line_parts[1])  # key looks like foo(bar...)?
             if match:
                 Undefine(match.group(1))
 
@@ -975,7 +1000,7 @@ def ProcessProjectFile(project_file, process):
         else:
             line = Substitute(line)
             line_parts = line.split(maxsplit=2)
-            line_parts.extend(['', ''])      # The level + title combination is optional
+            line_parts.extend(['', ''])  # The level + title combination is optional
             file_name, level, title = line_parts[:3]
 
             if file_name in file_aliases:
@@ -1020,6 +1045,7 @@ def ProcessProjectFile(project_file, process):
 
     STREAM.close()
 
+
 def SetLinks(page_index):
     """
     Add macros used for link to other pages for files with links to others.
@@ -1043,7 +1069,7 @@ def SetLinks(page_index):
     # Go up one level.
     up_file = ''
 
-    index = page_index - 1      # Back up one file
+    index = page_index - 1  # Back up one file
 
     # The level is how far up/down the tree a file resides.
     # Keep backing up (if possible) until a lower numbered level is reached.
@@ -1052,14 +1078,14 @@ def SetLinks(page_index):
 
     # We found a lower level before running out of files
     if index >= 0 and plevel[index] < plevel[page_index]:
-        if pfile[index].startswith('/'):    # Absolute path - leave as is
+        if pfile[index].startswith('/'):  # Absolute path - leave as is
             Define("LINK_UP", ChangeExtension(pfile[index]))
         else:
             Define("LINK_UP", ChangeExtension("{}{}".format(root_path, pfile[index])))
 
         Define("TITLE_UP", ptitle[index])
         up_file = pfile[index]
-    else:   # We ran out of files, or there is no lower level: nothing to link up to
+    else:  # We ran out of files, or there is no lower level: nothing to link up to
         Undefine("LINK_UP")
         Undefine("TITLE_UP")
 
@@ -1093,6 +1119,7 @@ def SetLinks(page_index):
     else:
         Undefine("LINK_NEXT")
         Undefine("TITLE_NEXT")
+
 
 def GenSiteMap():
     """
@@ -1138,7 +1165,7 @@ def GenSiteMap():
             map_entry += (" " * ((plevel[xx] - 1) * 2 + 2)) \
                          + delim1 + "__TOC_" + plevel[xx] \
                          + "_ITEM__('" + f + "'" + argsep + "'" + ptitle[xx] + "')" \
-                         + delim2 + delim1 + "__NEWLINE__" + delim2 \
+                         + delim2 + delim1 + "__NEWLINE__" + delim2
 
         level_old = plevel[xx]
 
@@ -1150,6 +1177,7 @@ def GenSiteMap():
 
     return map_entry
 
+
 def ResolveOutputName(file_name):
     """
     Returns the output name of a given source filename.
@@ -1157,7 +1185,7 @@ def ResolveOutputName(file_name):
     :param file_name:
     :return:
     """
-    file_name = ChangeExtension(file_name)      # Change GTML extension to HTML
+    file_name = ChangeExtension(file_name)  # Change GTML extension to HTML
 
     # Stitch relative paths to the output base directory name
     if output_dir != '' and not file_name.startswith('/'):
@@ -1173,7 +1201,7 @@ def ResolveOutputName(file_name):
     # Go over the file name and locate all /. Create each incremental
     # path segment if it does not yet exist.
     while separator_pos != -1:
-        separator_pos = file_name.find('/', separator_pos)   # -1 if not found
+        separator_pos = file_name.find('/', separator_pos)  # -1 if not found
 
         if separator_pos != -1:
             path_name = file_name[:separator_pos]
@@ -1182,6 +1210,7 @@ def ResolveOutputName(file_name):
             separator_pos += 1
 
     return file_name
+
 
 def Member(element, check_list):
     """
@@ -1195,6 +1224,7 @@ def Member(element, check_list):
         return True
 
     return False
+
 
 def ProcessSourceFile(gtm_name, parent, level=''):
     """
@@ -1256,6 +1286,7 @@ def ProcessSourceFile(gtm_name, parent, level=''):
     defines = save_defines
     characters = save_characters
 
+
 def CompressLines():
     """
     Compresses all lines, removing all things not necessary for a browser.
@@ -1264,7 +1295,7 @@ def CompressLines():
     global lines
 
     line = ''.join(lines)
-    lines = []      # Clear the (to be) processed lines
+    lines = []  # Clear the (to be) processed lines
 
     # Translate tabs and linefeed into spaces.
     tab_map = str.maketrans('\t\n', '  ')
@@ -1282,7 +1313,7 @@ def CompressLines():
         p2 = line.find(del2)    # locate (following) -->
 
         if 0 <= p1 < p2 and p2 >= 0:
-            line = line[:p1] + line[p2+len2:]  # Remove the entire comment
+            line = line[:p1] + line[p2 + len2:]  # Remove the entire comment
         else:
             break
 
@@ -1292,6 +1323,7 @@ def CompressLines():
         line = line[:-1]
 
     return line + '\n'
+
 
 def ProcessLines(gtm_name, out_file=None):
     """
@@ -1309,7 +1341,7 @@ def ProcessLines(gtm_name, out_file=None):
     current = 0
     if_level = 0
 
-    if not os.access (gtm_name, os.R_OK):
+    if not os.access(gtm_name, os.R_OK):
         Error("`{}' unreadable".format(gtm_name))
         return
 
@@ -1322,7 +1354,7 @@ def ProcessLines(gtm_name, out_file=None):
             line = re.sub(r'|-->.*$', '', line)
             line = re.sub(r'\s*-->.*$', '', line)
 
-        line = line.rstrip('\n')      # Remove trailing \n if present
+        line = line.rstrip('\n')  # Remove trailing \n if present
 
         # Parse '#literal' command because if literal processing is ON,
         # we simply print the line and continue to the next line.
@@ -1343,7 +1375,7 @@ def ProcessLines(gtm_name, out_file=None):
                     print(CompressLines(), file=out_file)
 
                 line = Substitute(line)
-                print (line, file=out_file)
+                print(line, file=out_file)
             continue
 
         # Next parse the if(def)/elsif/else/endif to decide if we want to
@@ -1365,9 +1397,9 @@ def ProcessLines(gtm_name, out_file=None):
             else:
                 line = line.replace('#els', '#', 1)
                 was_if = False
-        
+
             line = Substitute(line)
-        
+
             if line.startswith('#ifdef') or line.startswith('#ifndef'):
                 dummy, var = line.split(maxsplit=1)
                 match = GetValue(var) != ''
@@ -1383,7 +1415,7 @@ def ProcessLines(gtm_name, out_file=None):
                 else:
                     Error("unknown comparator `{}'".format(comp))
                     match = False
-        
+
             if was_if:
                 suppress.append(not match)
                 was_true.append(match)
@@ -1409,7 +1441,7 @@ def ProcessLines(gtm_name, out_file=None):
             else:
                 suppress[if_level] = was_true[if_level]
                 was_else[if_level] = True
-        
+
             continue
         elif line.startswith('#endif'):
             if if_level == 0:
@@ -1422,7 +1454,7 @@ def ProcessLines(gtm_name, out_file=None):
                     current -= 1
 
                 if_level -= 1
-        
+
             continue
 
         # Skip lines if current ignoring state says so.
@@ -1432,7 +1464,7 @@ def ProcessLines(gtm_name, out_file=None):
         # Now do others commands.
         if line.startswith('#entities'):
             dummy, switch = line.split(maxsplit=1)
-            
+
             if switch.upper() == 'ON':
                 literal = True
             elif switch.upper() == 'OFF':
@@ -1536,7 +1568,7 @@ def ProcessLines(gtm_name, out_file=None):
         # Table of contents can be used here.
         elif line.startswith(r'#toc') or line.startswith(r'#sitemap'):
             GenSiteMap()
-            if compression :
+            if compression:
                 # lines is a CompressLines variable??
                 lines.append(line)
             else:
@@ -1563,6 +1595,7 @@ def ProcessLines(gtm_name, out_file=None):
         print(CompressLines(), file=out_file)
 
     INFILE.close()
+
 
 def GenerateMakefile():
     """
@@ -1593,11 +1626,11 @@ def GenerateMakefile():
     print("# Files list #", file=OUTFILE)
     print("##############", file=OUTFILE)
     print("", file=OUTFILE)
-    print ("OUTPUT_FILES = \\", file=OUTFILE)
+    print("OUTPUT_FILES = \\", file=OUTFILE)
 
-    print (' \\\n'.join('\t{}'.format(output_file)
-                        for output_file in output_files),
-           file=OUTFILE)
+    print(' \\\n'.join('\t{}'.format(output_file)
+                       for output_file in output_files),
+          file=OUTFILE)
 
     print("", file=OUTFILE)
 
@@ -1616,7 +1649,7 @@ def GenerateMakefile():
     if output_dir != '':
         output_dir += '/'
 
-    output_dir.replace('//', '/')   # Replace // in path with /
+    output_dir.replace('//', '/')  # Replace // in path with /
 
     for ext in ext_source:
         for ext2 in extensions:
@@ -1644,12 +1677,13 @@ def GenerateMakefile():
 
     OUTFILE.close()
 
+
 def show_version():
     """
     Display the program's current version
     :return:
     """
-    print ("""
+    print("""
 GTML version 3.6.1 - python,
 Copyright (C) 1996-1999 Gihan Perera
 Copyright (C) 1999 Bruno Beaufils
@@ -1671,7 +1705,7 @@ NOTES:
     this order, allowing one to add to/modify the default behavior of gtml.
 
     Exit status is 1 if errors have been encountered, and 0 if all was OK.""",
-        formatter_class = argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
     parser.add_argument('-M',
@@ -1732,7 +1766,7 @@ NOTES:
     if args.D:
         for macro in args.D:
             parts = macro.split('=', maxsplit=1)
-            parts.append('')    # Easiest way to ensure a 2nd part is present.
+            parts.append('')  # Easiest way to ensure a 2nd part is present.
             Define(parts[0], parts[1])
 
     # Generate a makefile?
