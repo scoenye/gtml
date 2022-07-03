@@ -581,7 +581,7 @@ def SplitArgs(arg_string):
             while not re.match(r"(^'[^']*')", arg):
                 arg += argsep + temp.pop(0)
 
-            arg = arg.strip("'", arg)
+            arg = arg.strip("'")
             args.append(arg)
         else:
             args.append(arg)
@@ -1014,8 +1014,7 @@ def ProcessProjectFile(project_file, process):
                 if level == '':
                     ProcessSourceFile(file_name, project_file)
                 else:
-                    # These files will be processed by the hierarchy build at the end
-                    # (unless there was a preceding hierarchy command)
+                    # The TOC keys are used by GenSiteMap
                     lkey = "__TOC_{}__".format(level)
                     if lkey not in defines:
                         Define(lkey, "<ul>(((MARKER0)))</ul>")
@@ -1024,8 +1023,10 @@ def ProcessProjectFile(project_file, process):
                     if lkey not in defines:
                         Define(lkey, '<li><a href="(((MARKER0)))">(((MARKER1)))</a>')
 
+                    # These files will be processed by the hierarchy build at the end
+                    # (unless there was a preceding hierarchy command)
                     pfile.append(file_name)     # De-aliased project file name
-                    plevel.append(level)        # Specified level
+                    plevel.append(int(level))   # Specified level
                     ptitle.append(title)        # Specified title
             else:
                 Warn("Skipping `{}' (unknown file type)".format(line))
@@ -1132,46 +1133,43 @@ def GenSiteMap():
     level_old = 0
     map_entry = ""
 
+    # Go over all collected
     for xx in range(len(pfile)):
         f = pfile[xx]
         f = ChangeExtension(f)
 
         if level_old < plevel[xx]:
             map_entry += (" " * ((plevel[xx] - 1) * 2)) \
-                         + MACRO_START \
-                         + "__TOC_{}__('".format(plevel[xx]) \
-                         + MACRO_START \
-                         + "__NEWLINE__{}".format(MACRO_END)
+                         + "{}__TOC_{}__('".format(MACRO_START, plevel[xx]) \
+                         + "{}__NEWLINE__{}".format(MACRO_START, MACRO_END)
 
             map_entry += (" " * ((plevel[xx] - 1) * 2 + 2)) \
-                         + MACRO_START \
-                         + "__TOC_" + plevel[xx] \
-                         + "_ITEM__('" + f \
-                         + "'" + argsep \
-                         + "'" + ptitle[xx] + "')" \
-                         + MACRO_END + MACRO_START \
-                         + "__NEWLINE__" + MACRO_END
+                         + "{}__TOC_{}".format(MACRO_START, plevel[xx]) \
+                         + "_ITEM__('{}'{}'{}'){}".format(f, argsep, ptitle[xx], MACRO_END) \
+                         + "{}__NEWLINE__{}".format(MACRO_START, MACRO_END)
 
         if level_old == plevel[xx]:
             map_entry += (" " * ((plevel[xx] - 1) * 2 + 2)) \
-                         + MACRO_START + "__TOC_" + plevel[xx] \
-                         + "_ITEM__('" + f + "'" + argsep + "'" + ptitle[xx] + "')" \
-                         + MACRO_END + MACRO_START + "__NEWLINE__" + MACRO_END
+                         + "{}__TOC_{}".format(MACRO_START, plevel[xx]) \
+                         + "_ITEM__('{}'{}'{}'){}".format(f, argsep, ptitle[xx], MACRO_END) \
+                         + "{}__NEWLINE__{}".format(MACRO_START, MACRO_END)
 
         if level_old > plevel[xx]:
             map_entry += (" " * (plevel[xx] * 2)) \
-                         + "')" + MACRO_END + MACRO_START + "__NEWLINE__" + MACRO_END
+                         + "'){}".format(MACRO_END) \
+                         + "{}__NEWLINE__{}".format(MACRO_START, MACRO_END)
 
             map_entry += (" " * ((plevel[xx] - 1) * 2 + 2)) \
-                         + MACRO_START + "__TOC_" + plevel[xx] \
-                         + "_ITEM__('" + f + "'" + argsep + "'" + ptitle[xx] + "')" \
-                         + MACRO_END + MACRO_START + "__NEWLINE__" + MACRO_END
+                         + "{}__TOC_{}".format(MACRO_START, plevel[xx]) \
+                         + "_ITEM__('{}'{}'{}'){}".format(f, argsep, ptitle[xx], MACRO_END) \
+                         + "{}__NEWLINE__{}".format(MACRO_START, MACRO_END)
 
         level_old = plevel[xx]
 
     for xx in range(level_old, 0, -1):
         map_entry += (" " * ((plevel[xx] - 2) * 2)) \
-                     + "\')" + MACRO_END + MACRO_START + "__NEWLINE__" + MACRO_END
+                     + "\')" + MACRO_END \
+                     + "{}__NEWLINE__{}".format(MACRO_START, MACRO_END)
 
     map_entry = Substitute(map_entry)
 
@@ -1567,13 +1565,14 @@ def ProcessLines(gtm_name, out_file=None):
                 Error("expecting #compress as `ON' or `OFF'")
         # Table of contents can be used here.
         elif line.startswith(r'#toc') or line.startswith(r'#sitemap'):
-            GenSiteMap()
+            # GenSiteMap uses the page file collection. The command should
+            # only be used after all source files have been defined.
+            site_map = GenSiteMap()
             if compression:
-                # lines is a CompressLines variable??
-                lines.append(line)
+                lines.append(site_map)
             else:
                 if out_file is not None:
-                    print(line, file=out_file)
+                    print(site_map, file=out_file)
         # Timestamp format can be defined here.
         elif re.match(r'#timestamp[ \t]', line):
             dummy, stamp = line.split(maxsplit=1)
@@ -1784,7 +1783,7 @@ NOTES:
         if isProjectFile(file):
             ProcessProjectFile(file, True)
         elif isSourceFile(file):
-            ProcessSourceFile(file, "", 0)
+            ProcessSourceFile(file, '', '')
         else:
             Warn("Skipping `{}' (unknown file type)".format(file))
 
