@@ -491,10 +491,10 @@ def Substitute(line):
     # Macros have to be replaced by their values.
     # __NEWLINE__ and __TAB__ are substitute after all others.
     special = MACRO_START + '__NEWLINE__' + MACRO_END
-    line.replace(special, '__NEWLINE__')
+    line = line.replace(special, '__NEWLINE__')
 
     special = MACRO_START + '__TAB__' + MACRO_END
-    line.replace(special, '__TAB__')
+    line = line.replace(special, '__TAB__')
 
     l1 = len(MACRO_START)
     l2 = len(MACRO_END)
@@ -503,8 +503,8 @@ def Substitute(line):
     more = True
 
     while more:
-        p2 = line.find(MACRO_END)              # Leftmost occurrence of >>, -1 if not found
-        p1 = line.rfind(MACRO_START, 0, p2)      # Locate the matching <<, before the >> found above.
+        p2 = line.find(MACRO_END)  # Leftmost occurrence of >>, -1 if not found
+        p1 = line.rfind(MACRO_START, 0, p2)  # Locate the matching <<, before the >> found above.
 
         if p2 >= l1:                        # p2 == l1 for <<>>
             token = line[p1:p2+l2]          # Entire token: <<content>>
@@ -547,8 +547,8 @@ def Substitute(line):
 
             more = False
 
-    line.replace('__NEWLINE__', '\n')
-    line.replace('__TAB__', '\t')
+    line = line.replace('__NEWLINE__', '\n')
+    line = line.replace('__TAB__', '\t')
 
     return line
 
@@ -1168,7 +1168,7 @@ def GenSiteMap():
 
     for xx in range(level_old, 0, -1):
         map_entry += (" " * ((plevel[xx] - 2) * 2)) \
-                     + "\')" + MACRO_END \
+                     + "')" + MACRO_END \
                      + "{}__NEWLINE__{}".format(MACRO_START, MACRO_END)
 
     map_entry = Substitute(map_entry)
@@ -1307,8 +1307,8 @@ def CompressLines():
     len2 = len(del2)
 
     while True:
-        p1 = line.find(del1)    # locate <!--
-        p2 = line.find(del2)    # locate (following) -->
+        p1 = line.find(del1)  # locate <!--
+        p2 = line.find(del2)  # locate (following) -->
 
         if 0 <= p1 < p2 and p2 >= 0:
             line = line[:p1] + line[p2 + len2:]  # Remove the entire comment
