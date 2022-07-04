@@ -259,14 +259,14 @@ def SplitTime(time_stamp):
     time_global['wday'] = WeekDay[wday]  # from <agre3@ironbark.bendigo.latrobe.edu.au>
     time_global['shortwday'] = time_global['wday'][:3]
 
-    time_global['monthname'] = Month[mon]
+    time_global['monthname'] = Month[mon - 1]
     time_global['shortmon'] = time_global['monthname'][:3]
 
     time_global['year'] = year
     time_global['syear'] = year % 100
     time_global['mday'] = mday
     time_global['mdayth'] = mdayth
-    time_global['mon'] = mon + 1  # Because it starts from 0
+    time_global['mon'] = mon
 
 
 def FormatTimestamp(format_str):
