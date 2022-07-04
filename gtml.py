@@ -69,6 +69,7 @@ be_silent = False
 debug = False
 entities = False  # Convert HTML entities or not?
 compression = False
+literal = False
 lines = []  # Collect all lines if compression is turned on, then render from here
 generate_makefiles = False
 makefile_name = 'GNUmakefile'
@@ -159,7 +160,7 @@ def SplitTime(time_stamp):
     :param time_stamp: 
     :return: 
     """
-    year, mon, mday, hour, min, sec, wday, yday, isdst = time_stamp
+    year, mon, mday, hour, minute, sec, wday, yday, isdst = time_stamp
 
     # Month and Weekdays are defined differently in each language.
     if GetValue("LANGUAGE") == "fr":
@@ -253,7 +254,7 @@ def SplitTime(time_stamp):
             mdayth = "{}rd".format(mday)
 
     time_global['sec'] = '{:02d}'.format(sec)
-    time_global['min'] = '{:02d}'.format(min)
+    time_global['min'] = '{:02d}'.format(minute)
     time_global['hour'] = '{:02d}'.format(hour)
 
     time_global['wday'] = WeekDay[wday]  # from <agre3@ironbark.bendigo.latrobe.edu.au>
@@ -561,7 +562,7 @@ def SplitArgs(arg_string):
     :param arg_string:
     :return:
     """
-    args = []
+    arguments = []
     temp = arg_string.split(argsep)
 
     while len(temp) > 0:
@@ -575,18 +576,18 @@ def SplitArgs(arg_string):
                 arg += argsep + temp.pop(0)
 
             arg = arg.strip('"')
-            args.append(arg)
+            arguments.append(arg)
         elif arg.startswith("'"):
             # Start of 'quoted arg' detected, look for end, and add argument.
             while not re.match(r"(^'[^']*')", arg):
                 arg += argsep + temp.pop(0)
 
             arg = arg.strip("'")
-            args.append(arg)
+            arguments.append(arg)
         else:
-            args.append(arg)
+            arguments.append(arg)
 
-    return args
+    return arguments
 
 
 def isProjectFile(file_name):
@@ -662,6 +663,8 @@ def GetOutputBasename(name):
     :param name:
     :return:
     """
+    global base_name
+
     name = name.replace('\\', '/')
     last_slash = name.rfind('/')
 
@@ -1330,12 +1333,11 @@ def ProcessLines(gtm_name, out_file=None):
     :param out_file:
     :return: 
     """
-    global stamp, mstamp, dependencies, compression, lines
+    global stamp, mstamp, dependencies, compression, lines, literal
 
     suppress = [False]
     was_true = [False]
     was_else = [False]
-    literal = False
     current = 0
     if_level = 0
 
@@ -1483,18 +1485,17 @@ def ProcessLines(gtm_name, out_file=None):
 
             line = Substitute(line)
             line = re.sub(r'^#include(literal)?[ \t]*"', '', line)
-            line = re.sub(r'".*$', '', line)
+            file_name = re.sub(r'".*$', '', line)
+            file_name = ResolveIncludeFile(file_name)
 
-            file = line
-            file = ResolveIncludeFile(file)
             if gtm_name not in dependencies:
                 dependencies[gtm_name] = ''
 
-            dependencies[gtm_name] += '{} '.format(file)
+            dependencies[gtm_name] += '{} '.format(file_name)
 
-            if file != '':
+            if file_name != '':
                 # TODO #                Notice("    --- file\n")
-                ProcessLines(file, out_file)
+                ProcessLines(file_name, out_file)
 
             literal = my_prev_literal_setting
             continue
