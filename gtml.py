@@ -43,6 +43,8 @@
 #
 # ----------------------------------------------------------------------------
 import argparse
+import calendar
+import locale
 import os
 import re
 import subprocess
@@ -164,12 +166,6 @@ def SplitTime(time_stamp):
 
     # Month and Weekdays are defined differently in each language.
     if GetValue("LANGUAGE") == "fr":
-        Month = ["Janvier", "Février", "Mars",
-                 "Avril", "Mai", "Juin",
-                 "Juillet", "Août", "Septembre",
-                 "Octobre", "Novembre", "Décembre"]
-        WeekDay = ["Dimanche", "Lundi", "Mardi",
-                   "Mercredi", "Jeudi", "Vendredi", "Samedi"]
         if mday == 1:
             mdayth = "1er"
         else:
@@ -177,72 +173,30 @@ def SplitTime(time_stamp):
 
     # "no" thanks to Helmers, Jens Bloch <Jens.Bloch.Helmers@dnv.com>
     elif GetValue("LANGUAGE") == "no":
-        Month = ["januar", "februar", "mars",
-                 "april", "mai", "juni",
-                 "juli", "august", "september",
-                 "oktober", "november", "desember"]
-        WeekDay = ["Søndag", "Mandag", "Tirsdag",
-                   "Onsdag", "Torsdag", "Fredag", "Lørdag"]
         mdayth = "{}.".format(mday)
 
     # "se" thanks to magog, <magog@swipnet.se>
     elif GetValue("LANGUAGE") == "se":
-        Month = ["januari", "februari", "mars",
-                 "april", "maj", "juni",
-                 "juli", "augusti", "september",
-                 "oktober", "november", "december"]
-        WeekDay = ["Söndag", "Måndag", "Tisdag", "Onsdag",
-                   "Torsdag", "Fredag", "Lördag"]
         mdayth = '{}'.format(mday)  # XXX: Not verified
 
     # "it" thanks to Pioppo, <pioppo@4net.it>
     elif GetValue("LANGUAGE") == "it":
-        Month = ["Gennaio", "Febbraio", "Marzo",
-                 "Aprile", "Maggio", "Giugno",
-                 "Luglio", "Agosto", "Settembre",
-                 "Ottobre", "Novembre", "Dicembre"]
-        WeekDay = ["Domenica", "Lunedì", "Martedì", "Mercoledì",
-                   "Giovedì", "Venerdì", "Sabato"]
         mdayth = '{}'.format(mday)
 
     # "nl" thanks to Gert-Jan Brink <gertjan@code4u.com>
     elif GetValue("LANGUAGE") == "nl":
-        Month = ["januari", "februari", "maart",
-                 "april", "mei", "juni",
-                 "juli", "augustus", "september",
-                 "oktober", "november", "december"]
-        WeekDay = ["zondag", "maandag", "dinsdag", "woensdag",
-                   "donderdag", "vrijdag", "zaterdag"]
         mdayth = '{}'.format(mday)
 
     # "de" thanks to Uwe Arzt <uwe.arzt@robots.de>
     elif GetValue("LANGUAGE") == "de":
-        Month = ["Januar", "Februar", "März",
-                 "April", "Mai", "Juni",
-                 "Juli", "August", "September",
-                 "Oktober", "November", "Dezember"]
-        WeekDay = ["Sonntag", "Montag", "Dienstag",
-                   "Mittwoch", "Donnerstag", "Freitag", "Samstag"]
         mdayth = '{}'.format(mday)
 
     # "ie" thanks to Ken Guest <kengu@credo.ie>
     elif GetValue("LANGUAGE") == "ie":
-        Month = ["Enáir", "Feabhra", "Márta",
-                 "Bealtaine", "Aibreán", "Meitheamh",
-                 "Lúil", "Lúnasa", "Meán Fomhair",
-                 "Deireadh Fomhair", "Samhain", "Má na Nollaig"]
-        WeekDay = ["Domhnach", "Luan", "Máirt",
-                   "Céadaoin", "Déardaoin", "Aoine", "Satharn"]
         mdayth = '{}.'.format(mday)
 
     # default is english.
     else:
-        Month = ["January", "February", "March",
-                 "April", "May", "June",
-                 "July", "August", "September",
-                 "October", "November", "December"]
-        WeekDay = ["Sunday", "Monday", "Tuesday",
-                   "Wednesday", "Thursday", "Friday", "Saturday"]
         mdayth = "{}th".format(mday)
 
         # from <agre3@ironbark.bendigo.latrobe.edu.au>
@@ -257,11 +211,11 @@ def SplitTime(time_stamp):
     time_global['min'] = '{:02d}'.format(minute)
     time_global['hour'] = '{:02d}'.format(hour)
 
-    time_global['wday'] = WeekDay[wday]  # from <agre3@ironbark.bendigo.latrobe.edu.au>
-    time_global['shortwday'] = time_global['wday'][:3]
+    time_global['wday'] = calendar.day_name[wday]
+    time_global['shortwday'] = calendar.day_abbr[wday]
 
-    time_global['monthname'] = Month[mon - 1]
-    time_global['shortmon'] = time_global['monthname'][:3]
+    time_global['monthname'] = calendar.month_name[mon]
+    time_global['shortmon'] = calendar.month_abbr[mon]
 
     time_global['year'] = year
     time_global['syear'] = year % 100
@@ -1697,6 +1651,8 @@ under the conditions defined in the GNU General Public License.
 
 
 if __name__ == '__main__':
+    locale.setlocale(locale.LC_ALL, '')     # Needed to make calendar cough up localized month and day names.
+
     parser = argparse.ArgumentParser(
         epilog="""
 NOTES:
