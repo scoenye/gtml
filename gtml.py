@@ -164,48 +164,35 @@ def SplitTime(time_stamp):
     """
     year, mon, mday, hour, minute, sec, wday, yday, isdst = time_stamp
 
-    # Month and Weekdays are defined differently in each language.
-    if GetValue("LANGUAGE") == "fr":
+    mdayth = '{}'.format(mday)
+
+    language = GetValue('LANGUAGE')     # Old style locale environment variable
+    if language == '(((BLANK)))':
+        language = GetValue('LANG')     # Current local variable
+
+    if language.startswith('fr'):
         if mday == 1:
-            mdayth = "1er"
-        else:
-            mdayth = '{}'.format(mday)
+            mdayth = '1er'
 
-    # "no" thanks to Helmers, Jens Bloch <Jens.Bloch.Helmers@dnv.com>
-    elif GetValue("LANGUAGE") == "no":
-        mdayth = "{}.".format(mday)
+    # "nn" thanks to Helmers, Jens Bloch <Jens.Bloch.Helmers@dnv.com>
+    elif language.startswith('nn'):
+        mdayth = '{}.'.format(mday)
 
-    # "se" thanks to magog, <magog@swipnet.se>
-    elif GetValue("LANGUAGE") == "se":
-        mdayth = '{}'.format(mday)  # XXX: Not verified
-
-    # "it" thanks to Pioppo, <pioppo@4net.it>
-    elif GetValue("LANGUAGE") == "it":
-        mdayth = '{}'.format(mday)
-
-    # "nl" thanks to Gert-Jan Brink <gertjan@code4u.com>
-    elif GetValue("LANGUAGE") == "nl":
-        mdayth = '{}'.format(mday)
-
-    # "de" thanks to Uwe Arzt <uwe.arzt@robots.de>
-    elif GetValue("LANGUAGE") == "de":
-        mdayth = '{}'.format(mday)
-
-    # "ie" thanks to Ken Guest <kengu@credo.ie>
-    elif GetValue("LANGUAGE") == "ie":
+    # "ga" thanks to Ken Guest <kengu@credo.ie>
+    elif language.startswith('ga'):
         mdayth = '{}.'.format(mday)
 
     # default is english.
     else:
-        mdayth = "{}th".format(mday)
+        mdayth = '{}th'.format(mday)
 
         # from <agre3@ironbark.bendigo.latrobe.edu.au>
         if mday == 1 or mday == 21 or mday == 31:
-            mdayth = "{}st".format(mday)
+            mdayth = '{}st'.format(mday)
         if mday == 2 or mday == 22:
-            mdayth = "{}nd".format(mday)
+            mdayth = '{}nd'.format(mday)
         if mday == 3 or mday == 23:
-            mdayth = "{}rd".format(mday)
+            mdayth = '{}rd'.format(mday)
 
     time_global['sec'] = '{:02d}'.format(sec)
     time_global['min'] = '{:02d}'.format(minute)
